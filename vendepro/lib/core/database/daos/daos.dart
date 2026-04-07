@@ -174,3 +174,36 @@ class BusinessDao extends DatabaseAccessor<AppDatabase> with _$BusinessDaoMixin 
       into(appSettings)
           .insertOnConflictUpdate(AppSettingsCompanion.insert(key: key, value: value));
 }
+
+@DriftAccessor(tables: [Expenses])
+class ExpensesDao extends DatabaseAccessor<AppDatabase> with _$ExpensesDaoMixin {
+  ExpensesDao(super.db);
+
+  Stream<List<Expense>> watchAllByBusiness(String businessId) {
+    return (select(expenses)
+          ..where((e) => e.businessId.equals(businessId))
+          ..orderBy([(e) => OrderingTerm(expression: e.date, mode: OrderingMode.desc)]))
+        .watch();
+  }
+  
+  Future<List<Expense>> getByDateRange(String businessId, DateTime start, DateTime end) {
+    return (select(expenses)
+          ..where((e) => e.businessId.equals(businessId))
+          ..where((e) => e.date.isBetweenValues(start, end))
+          ..orderBy([(e) => OrderingTerm(expression: e.date, mode: OrderingMode.asc)]))
+        .get();
+  }
+
+  Future<void> insertExpense(ExpensesCompanion expense) {
+    return into(expenses).insert(expense);
+  }
+
+  Future<void> updateExpense(ExpensesCompanion expense) {
+    return update(expenses).replace(expense);
+  }
+
+  Future<void> deleteExpense(String id) {
+    return (delete(expenses)..where((e) => e.id.equals(id))).go();
+  }
+}
+

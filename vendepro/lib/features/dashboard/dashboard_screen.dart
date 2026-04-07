@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
@@ -101,9 +102,19 @@ class DashboardScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
-                ...((invoices.value ?? []).take(5).map(
-                      (inv) => _InvoiceTile(invoice: inv),
-                    )),
+                if (invoices.isLoading)
+                  ...List.generate(4, (_) => const _SkeletonInvoiceTile())
+                else if (invoices.value?.isEmpty ?? true)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text('Aún no tienes facturas', style: TextStyle(color: Colors.grey)),
+                    ),
+                  )
+                else
+                  ...((invoices.value ?? []).take(5).map(
+                        (inv) => _InvoiceTile(invoice: inv),
+                      )),
 
                 // Low stock alert
                 if ((lowStock.value ?? []).isNotEmpty) ...[
@@ -499,6 +510,65 @@ class _SyncIndicatorButton extends ConsumerWidget {
           );
         }
       },
+    );
+  }
+}
+
+class _SkeletonInvoiceTile extends StatelessWidget {
+  const _SkeletonInvoiceTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: Colors.transparent,
+      elevation: 0,
+      child: Shimmer.fromColors(
+        baseColor: AppColors.darkBorder,
+        highlightColor: AppColors.darkCard,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          title: Container(
+            width: 100,
+            height: 14,
+            color: Colors.white,
+          ),
+          subtitle: Container(
+            width: 80,
+            height: 12,
+            margin: const EdgeInsets.only(top: 8),
+            color: Colors.white,
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 60,
+                height: 14,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 70,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

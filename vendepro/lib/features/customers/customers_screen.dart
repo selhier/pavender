@@ -49,10 +49,11 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                         .toList();
 
                 if (filtered.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.people_rounded,
-                    title: 'Sin clientes',
-                    subtitle: 'Registra tu primer cliente',
+                  return IllustrationEmptyState(
+                    primaryIcon: Icons.people_alt_rounded,
+                    secondaryIcon: Icons.person_add_alt_1_rounded,
+                    title: 'Aún no tienes clientes',
+                    subtitle: 'Registra a tus compradores para un mejor seguimiento de ventas.',
                     actionLabel: 'Agregar Cliente',
                     onAction: () => context.push('/customers/new'),
                   );

@@ -13,6 +13,8 @@ class MainScaffold extends StatelessWidget {
     _NavItem(icon: Icons.inventory_2_rounded, label: 'Inventario', path: '/inventory'),
     _NavItem(icon: Icons.receipt_long_rounded, label: 'Facturas', path: '/invoices'),
     _NavItem(icon: Icons.people_rounded, label: 'Clientes', path: '/customers'),
+    _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Gastos', path: '/expenses'),
+    _NavItem(icon: Icons.analytics_rounded, label: 'Reportes', path: '/reports'),
     _NavItem(icon: Icons.settings_rounded, label: 'Ajustes', path: '/settings'),
   ];
 

@@ -8,6 +8,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final String? productId;
@@ -124,7 +125,29 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     validator: (v) =>
                         v!.isEmpty ? 'Requerido' : null),
                 const SizedBox(height: 12),
-                _buildField('Código SKU', _sku),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(child: _buildField('Código SKU', _sku)),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: () async {
+                        var res = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SimpleBarcodeScannerPage(),
+                          ),
+                        );
+                        if (res is String && res != '-1') {
+                          setState(() => _sku.text = res);
+                        }
+                      },
+                      icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 28),
+                      tooltip: 'Escanear Código',
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 _buildField('Descripción', _description, maxLines: 3),
               ]),

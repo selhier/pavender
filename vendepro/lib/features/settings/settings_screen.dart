@@ -251,6 +251,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: _save,
               ),
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 52,
+              child: GradientButton(
+                label: 'Cerrar Sesión',
+                icon: Icons.logout_rounded,
+                gradient: const LinearGradient(colors: [AppColors.error, Color.fromARGB(255, 235, 114, 114)]),
+                onTap: () async {
+                  await ref.read(authControllerProvider.notifier).signOut();
+                  // The router will handle redirection to /login
+                },
+              ),
+            ),
             const SizedBox(height: 32),
 
             // App version

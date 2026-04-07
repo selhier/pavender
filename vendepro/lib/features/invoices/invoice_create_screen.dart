@@ -9,6 +9,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class _CartItem {
   final dynamic product;
@@ -78,6 +79,30 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                       hint: 'Buscar producto...',
                       onChanged: (v) =>
                           setState(() => _productSearch = v),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+                        onPressed: () async {
+                          var res = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SimpleBarcodeScannerPage(),
+                            ),
+                          );
+                          if (res is String && res != '-1') {
+                            final p = products.where((p) => p.sku == res).firstOrNull;
+                            if (p != null) {
+                              _addToCart(p);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Agregado: ${p.name}'), backgroundColor: AppColors.success),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Producto no encontrado'), backgroundColor: AppColors.error),
+                              );
+                            }
+                          }
+                        },
+                      ),
                     ),
                   ),
                   Expanded(

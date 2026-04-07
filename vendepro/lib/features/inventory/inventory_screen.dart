@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../../core/database/app_database.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -67,9 +69,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               children: [
                 // Products tab
                 productsAsync.when(
-                  loading: () => const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary)),
+                  loading: () => ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: 5,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, __) => const SkeletonProductCard(),
+                  ),
                   error: (e, _) => Center(child: Text('Error: $e')),
                   data: (products) {
                     final filtered = _search.isEmpty
@@ -81,10 +86,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           }).toList();
 
                     if (filtered.isEmpty) {
-                      return EmptyState(
-                        icon: Icons.inventory_2_rounded,
+                      return IllustrationEmptyState(
+                        primaryIcon: Icons.inventory_2_rounded,
+                        secondaryIcon: Icons.add_box_rounded,
                         title: 'Sin productos',
-                        subtitle: 'Agrega tu primer producto al inventario',
+                        subtitle: 'Agrega tu primer producto al inventario y comienza a vender.',
                         actionLabel: 'Agregar Producto',
                         onAction: () => context.push('/inventory/new'),
                       );
@@ -114,9 +120,58 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/inventory/new'),
+        onPressed: () {
+          if (_tabController.index == 0) {
+            context.push('/inventory/new');
+          } else {
+            _showCategoryDialog(context);
+          }
+        },
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
+      ),
+    );
+  }
+
+  void _showCategoryDialog(BuildContext context) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nueva Categoría'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(
+            labelText: 'Nombre de categoría',
+            hintText: 'Ej. Postres',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (ctrl.text.trim().isEmpty) return;
+              final db = ref.read(databaseProvider);
+              final bId = ref.read(currentBusinessIdProvider);
+              final uuid = DateTime.now().millisecondsSinceEpoch.toString();
+              await db.into(db.categories).insert(
+                CategoriesCompanion.insert(
+                  id: uuid,
+                  name: ctrl.text.trim(),
+                  businessId: bId,
+                  icon: const drift.Value('🏷️'),
+                ),
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) setState(() {});
+            },
+            child: const Text('Crear', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

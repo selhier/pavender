@@ -1,6 +1,6 @@
-// lib/core/widgets/shared_widgets.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 import '../theme/app_theme.dart';
 
 /// Gradient button
@@ -276,12 +276,14 @@ class AppSearchBar extends StatelessWidget {
   final String hint;
   final ValueChanged<String> onChanged;
   final TextEditingController? controller;
+  final Widget? suffixIcon;
 
   const AppSearchBar({
     super.key,
     required this.hint,
     required this.onChanged,
     this.controller,
+    this.suffixIcon,
   });
 
   @override
@@ -293,6 +295,7 @@ class AppSearchBar extends StatelessWidget {
         hintText: hint,
         prefixIcon:
             const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+        suffixIcon: suffixIcon,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
@@ -320,6 +323,205 @@ class LoadingOverlay extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A Premium Empty State that composes icons to look like a vector illustration
+class IllustrationEmptyState extends StatelessWidget {
+  final IconData primaryIcon;
+  final IconData secondaryIcon;
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const IllustrationEmptyState({
+    super.key,
+    required this.primaryIcon,
+    required this.secondaryIcon,
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 160,
+              width: 160,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background Blobs
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                    ).animate().scale(duration: 800.ms, delay: 200.ms, curve: Curves.easeOutBack),
+                  ),
+                  Positioned(
+                    left: 20,
+                    bottom: 20,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      transform: Matrix4.rotationZ(0.2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ).animate().scale(duration: 800.ms, delay: 400.ms, curve: Curves.easeOutBack),
+                  ),
+                  // Primary Element
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradient,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Icon(primaryIcon, size: 50, color: Colors.white),
+                  ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                  // Secondary floating element
+                  Positioned(
+                    right: 15,
+                    bottom: 15,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkCard,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.darkBorder, width: 2),
+                      ),
+                      child: Icon(secondaryIcon, size: 24, color: AppColors.primaryLight),
+                    ).animate().scale(duration: 600.ms, delay: 500.ms, curve: Curves.elasticOut),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+            ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey,
+                    height: 1.5,
+                  ),
+            ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2, end: 0),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 200,
+              child: GradientButton(
+                label: actionLabel,
+                icon: Icons.add_rounded,
+                onTap: onAction,
+              ),
+            ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2, end: 0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SkeletonProductCard extends StatelessWidget {
+  const SkeletonProductCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Shimmer.fromColors(
+          baseColor: AppColors.darkBorder,
+          highlightColor: AppColors.darkCard,
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 80,
+                      height: 12,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 60,
+                      height: 14,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                   Container(
+                      width: 70,
+                      height: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 50,
+                      height: 12,
+                      color: Colors.white,
+                    ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

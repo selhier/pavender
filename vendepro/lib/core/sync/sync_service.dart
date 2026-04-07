@@ -10,10 +10,11 @@ import 'package:drift/drift.dart' as drift;
 class SyncService {
   final AppDatabase _db;
   final FirebaseFirestore _firestore;
+  final String _businessId;
   StreamSubscription? _connectivitySub;
   bool _isSyncing = false;
 
-  SyncService(this._db, this._firestore);
+  SyncService(this._db, this._firestore, this._businessId);
 
   void startListening() {
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
@@ -52,7 +53,7 @@ class SyncService {
           final data = jsonDecode(item.data) as Map<String, dynamic>;
           final ref = _firestore
               .collection('businesses')
-              .doc(data['businessId'] ?? 'default_business')
+              .doc(data['businessId'] ?? _businessId)
               .collection(item.entity)
               .doc(item.entityId);
 
@@ -140,9 +141,29 @@ class SyncService {
           .get();
 
       for (final doc in invoicesSnap.docs) {
-        final data = doc.data();
         await _db.invoicesDao.markSynced(doc.id);
         // Additional merge logic as needed
+      }
+
+      // Pull expenses
+      final expensesSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('expenses')
+          .get();
+
+      for (final doc in expensesSnap.docs) {
+        final data = doc.data();
+        await _db.expensesDao.updateExpense(ExpensesCompanion(
+          id: drift.Value(doc.id),
+          amount: drift.Value((data['amount'] ?? 0).toDouble()),
+          description: drift.Value(data['description'] ?? ''),
+          category: drift.Value(data['category'] ?? ''),
+          date: drift.Value(DateTime.tryParse(data['date'] ?? '') ?? DateTime.now()),
+          businessId: drift.Value(businessId),
+          status: drift.Value(data['status'] ?? 'paid'),
+          synced: const drift.Value(true),
+        ));
       }
     } catch (e) {
       debugPrint('Pull from cloud failed: $e');

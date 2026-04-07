@@ -135,3 +135,20 @@ class AppSettings extends Table {
   @override
   Set<Column> get primaryKey => {key};
 }
+
+// Expenses (Gastos/Egresos)
+class Expenses extends Table {
+  TextColumn get id => text()();
+  RealColumn get amount => real()();
+  TextColumn get description => text()();
+  TextColumn get category => text()();
+  DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get businessId => text()();
+  TextColumn get status => text().withDefault(const Constant('paid'))(); // paid, pending
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

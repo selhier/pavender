@@ -16,6 +16,7 @@ part 'app_database.g.dart';
     InvoiceItems,
     SyncQueue,
     AppSettings,
+    Expenses,
   ],
   daos: [
     ProductsDao,
@@ -23,6 +24,7 @@ part 'app_database.g.dart';
     CustomersDao,
     SyncDao,
     BusinessDao,
+    ExpensesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

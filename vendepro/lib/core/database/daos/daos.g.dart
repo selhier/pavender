@@ -22,3 +22,6 @@ mixin _$BusinessDaoMixin on DatabaseAccessor<AppDatabase> {
   $BusinessesTable get businesses => attachedDatabase.businesses;
   $AppSettingsTable get appSettings => attachedDatabase.appSettings;
 }
+mixin _$ExpensesDaoMixin on DatabaseAccessor<AppDatabase> {
+  $ExpensesTable get expenses => attachedDatabase.expenses;
+}
