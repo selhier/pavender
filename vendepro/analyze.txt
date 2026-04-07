@@ -1,0 +1,56 @@
+﻿Analyzing vendepro...                                           
+
+warning - Unused import: 'package:drift/drift.dart' - lib\core\database\connection\connection.dart:4:8 - unused_import
+  error - The method 'createConnection' isn't defined for the type 'QueryExecutor' - lib\core\database\connection\native.dart:22:52 - undefined_method
+   info - 'package:drift/web.dart' is deprecated and shouldn't be used. This variant of web support has downsides compared to `package:drift/wasm.dart` and is in a deprecated bugfix-only mode. Please consider migrating to the new web APIS: https://drift.simonbinder.eu/web - lib\core\database\connection\web.dart:5:1 - deprecated_member_use
+warning - Unused import: 'package:flutter/material.dart' - lib\core\router\app_router.dart:3:8 - unused_import
+warning - The value of the local variable 'data' isn't used - lib\core\sync\sync_service.dart:143:15 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\theme\app_theme.dart:128:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\theme\app_theme.dart:232:24 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\main_scaffold.dart:169:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:37:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:102:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:117:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:127:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:154:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:179:29 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:181:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\core\widgets\shared_widgets.dart:317:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\customers\customer_form_screen.dart:113:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\customers\customers_screen.dart:75:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:266:24 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:268:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:371:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:372:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:401:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:442:34 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\dashboard\dashboard_screen.dart:444:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\inventory\inventory_screen.dart:180:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\inventory\inventory_screen.dart:181:53 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\inventory\product_form_screen.dart:166:19 - deprecated_member_use
+warning - Unused import: 'package:intl/intl.dart' - lib\features\invoices\invoice_create_screen.dart:7:8 - unused_import
+warning - A value for optional parameter 'quantity' isn't ever given - lib\features\invoices\invoice_create_screen.dart:17:42 - unused_element_parameter
+warning - A value for optional parameter 'discount' isn't ever given - lib\features\invoices\invoice_create_screen.dart:17:61 - unused_element_parameter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_create_screen.dart:104:55 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\invoices\invoice_create_screen.dart:222:27 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_create_screen.dart:438:36 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_create_screen.dart:493:36 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_create_screen.dart:495:55 - deprecated_member_use
+warning - Unused import: 'dart:typed_data' - lib\features\invoices\invoice_detail_screen.dart:2:8 - unused_import
+  error - The getter 'status' isn't defined for the type 'Object' - lib\features\invoices\invoice_detail_screen.dart:83:33 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_detail_screen.dart:296:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_list_screen.dart:61:49 - deprecated_member_use
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\invoices\invoice_list_screen.dart:103:43 - invalid_null_aware_operator
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\invoices\invoice_list_screen.dart:161:44 - deprecated_member_use
+warning - Unused import: '../../core/widgets/shared_widgets.dart' - lib\features\platform_admin\platform_admin_screen.dart:9:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\platform_admin\platform_admin_screen.dart:111:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\platform_admin\platform_admin_screen.dart:277:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\platform_admin\platform_admin_screen.dart:374:35 - deprecated_member_use
+warning - The value of the field '_loaded' isn't used - lib\features\settings\settings_screen.dart:26:8 - unused_field
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\settings\settings_screen.dart:160:50 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\settings\settings_screen.dart:210:19 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\settings\settings_screen.dart:238:19 - deprecated_member_use
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+   info - 'package:drift/web/worker.dart' is deprecated and shouldn't be used. This variant of web support has downsides compared to `package:drift/wasm.dart` and is in a deprecated bugfix-only mode. Please consider migrating to the new web APIS: https://drift.simonbinder.eu/web - web\drift_worker.dart:4:1 - deprecated_member_use
+  error - 1 positional argument expected by 'driftWorkerMain', but 0 found - web\drift_worker.dart:7:19 - not_enough_positional_arguments
+

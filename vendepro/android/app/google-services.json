@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "838015455589",
+    "project_id": "vendepro-9dd32",
+    "storage_bucket": "vendepro-9dd32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:838015455589:android:77cd0b802c5d6e9f59118c",
+        "android_client_info": {
+          "package_name": "com.vendepro.vendepro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQpH8ttJLIlVZSEMS6-WZ-kIO4eoATIPg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
