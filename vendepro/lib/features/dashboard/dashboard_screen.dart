@@ -1,4 +1,4 @@
-// lib/features/dashboard/dashboard_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,41 +31,66 @@ class DashboardScreen extends ConsumerWidget {
             expandedHeight: 120,
             floating: true,
             snap: true,
-            backgroundColor: Colors.transparent,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [AppColors.darkBg, AppColors.darkSurface],
+                    colors: [
+                      Theme.of(context).colorScheme.surface,
+                      Theme.of(context).scaffoldBackgroundColor,
+                    ],
                   ),
                 ),
                 padding:
                     const EdgeInsets.fromLTRB(20, 50, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    business.when(
-                      data: (b) => Text(
-                        '¡Hola, ${b?.name ?? "Mi Negocio"}! 👋',
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                child: business.when(
+                  data: (b) => Row(
+                    children: [
+                      if (b?.logoPath != null)
+                        Container(
+                          width: 48,
+                          height: 48,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              image: MemoryImage(base64Decode(b!.logoPath!)),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              '¡Hola, ${b?.name ?? "Mi Negocio"}! 👋',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Text(
+                              DateFormat('EEEE, d MMMM yyyy', 'es')
+                                  .format(DateTime.now()),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-                    Text(
-                      DateFormat('EEEE, d MMMM yyyy', 'es').format(DateTime.now()),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.grey),
-                    ),
-                  ],
+                    ],
+                  ),
+                  loading: () => const CircularProgressIndicator(),
+                  error: (err, _) => Text('Error: $err'),
                 ),
               ),
             ),
@@ -104,6 +129,13 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 if (invoices.isLoading)
                   ...List.generate(4, (_) => const _SkeletonInvoiceTile())
+                else if (invoices.hasError)
+                   Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text('Error al cargar facturas: ${invoices.error}', style: const TextStyle(color: Colors.red)),
+                    ),
+                  )
                 else if (invoices.value?.isEmpty ?? true)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 32),
@@ -182,20 +214,23 @@ class _KpiRow extends StatelessWidget {
     ];
 
     if (isWide) {
-      return Row(
-        children: cards
-            .map((c) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: c,
-                  ),
-                ))
-            .toList(),
+      return SizedBox(
+        height: 160,
+        child: Row(
+          children: cards
+              .map((c) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: c,
+                    ),
+                  ))
+              .toList(),
+        ),
       );
     }
 
     return SizedBox(
-      height: 150,
+      height: 160,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
@@ -310,10 +345,12 @@ class _SalesChart extends StatelessWidget {
       final day = now.subtract(Duration(days: 6 - i));
       final total = invoices
           .where((inv) =>
+              inv != null &&
               inv.status == 'paid' &&
+              inv.createdAt != null &&
               inv.createdAt.day == day.day &&
               inv.createdAt.month == day.month)
-          .fold<double>(0, (sum, inv) => sum + (inv.total as double));
+          .fold<double>(0, (sum, inv) => sum + ((inv.total ?? 0.0) as double));
       return FlSpot(i.toDouble(), total);
     });
 

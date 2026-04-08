@@ -8,6 +8,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../../core/utils/dr_utils.dart';
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
   final String? customerId;
@@ -150,9 +151,23 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _taxId,
-                decoration: const InputDecoration(
-                    labelText: 'RUC / NIT / DNI',
-                    prefixIcon: Icon(Icons.badge_outlined)),
+                decoration: InputDecoration(
+                    labelText: _taxId.text.length <= 9 ? 'RNC (9 dígitos)' : 'Cédula (11 dígitos)',
+                    prefixIcon: const Icon(Icons.badge_outlined),
+                    helperText: 'Validación para Rep. Dominicana',
+                ),
+                onChanged: (v) => setState(() {}),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return null;
+                  final clean = v.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (clean.length != 9 && clean.length != 11) {
+                    return 'Debe tener 9 o 11 dígitos';
+                  }
+                  if (!DRUtils.isValidTaxId(clean)) {
+                    return 'Número inválido para RD';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 32),
               GradientButton(

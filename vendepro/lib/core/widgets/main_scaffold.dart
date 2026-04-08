@@ -95,7 +95,7 @@ class _SideNavRail extends StatelessWidget {
                 Text(
                   'VendePro',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
                       ),
                 ),
@@ -181,11 +181,10 @@ class _BottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: items.asMap().entries.map((e) {
               final selected = e.key == selectedIndex;
-              return GestureDetector(
-                onTap: () => onTap(e.key),
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 64,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(e.key),
+                  behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -207,14 +206,19 @@ class _BottomNav extends StatelessWidget {
                             duration: 200.ms,
                           ),
                       const SizedBox(height: 2),
-                      Text(
-                        e.value.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: selected ? AppColors.primary : Colors.grey,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Text(
+                          e.value.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: selected ? AppColors.primary : Colors.grey,
+                          ),
                         ),
                       ),
                     ],

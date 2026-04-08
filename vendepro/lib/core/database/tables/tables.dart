@@ -86,6 +86,10 @@ class Invoices extends Table {
   RealColumn get total => real().withDefault(const Constant(0.0))();
   TextColumn get notes => text().nullable()();
   TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();
+  // DR Localization
+  TextColumn get ncf => text().nullable()();
+  TextColumn get ncfType => text().nullable()();
+  
   TextColumn get businessId => text()();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   DateTimeColumn get issuedAt => dateTime().withDefault(currentDateAndTime)();
@@ -147,6 +151,22 @@ class Expenses extends Table {
   TextColumn get status => text().withDefault(const Constant('paid'))(); // paid, pending
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// DR Localization - NCF Sequences
+class NcfSequences extends Table {
+  TextColumn get id => text()();
+  TextColumn get type => text()(); // 01, 02, etc.
+  TextColumn get prefix => text().withDefault(const Constant('B'))();
+  IntColumn get from => integer()();
+  IntColumn get to => integer()();
+  IntColumn get lastUsed => integer()();
+  TextColumn get businessId => text()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override

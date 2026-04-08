@@ -9,6 +9,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../../core/utils/dr_utils.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class _CartItem {
@@ -34,19 +35,236 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   final _notesCtrl = TextEditingController();
   bool _isLoading = false;
   String _productSearch = '';
+  String? _ncfType; // DR Localization
 
   double get _subtotal => _cart.fold(0, (s, i) => s + i.subtotal);
-  double get _tax {
-    // Tax rate from business config (default 0)
-    return _subtotal * 0.0;
-  }
-  double get _total => _subtotal + _tax;
+  // _tax and _total computed in build()
 
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productsStreamProvider).value ?? [];
+    final cardFeePct = ref.watch(cardFeeProvider).value ?? 0.0;
+    final taxRateAsync = ref.watch(taxRateProvider);
+    final taxRate = taxRateAsync.value ?? 0.0;
+    
+    double taxAmount = _subtotal * (taxRate / 100.0);
+    double fee = _paymentMethod == 'card' ? (_subtotal + taxAmount) * (cardFeePct / 100.0) : 0.0;
+    double finalTotal = _subtotal + taxAmount + fee;
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
+    Widget cartPanel = Container(
+      width: isMobile ? double.infinity : 280,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(left: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: _CustomerSelector(
+              selected: _selectedCustomer,
+              onSelect: (c) => setState(() => _selectedCustomer = c),
+            ),
+          ),
+          const Divider(height: 1),
+          // Cart items
+          Expanded(
+            child: _cart.isEmpty
+                ? const Center(
+                    child: Text('Selecciona productos',
+                        style: TextStyle(color: Colors.grey)))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _cart.length,
+                    itemBuilder: (_, i) => _CartItemTile(
+                      item: _cart[i],
+                      onRemove: () => setState(() => _cart.removeAt(i)),
+                      onQuantityChange: (q) =>
+                          setState(() => _cart[i].quantity = q),
+                    ),
+                  ),
+          ),
+          const Divider(height: 1),
+          // Scrollable summary / actions section
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _SummaryRow('Subtotal', '\$${_subtotal.toStringAsFixed(2)}'),
+                  _SummaryRow('Impuesto', '\$${taxAmount.toStringAsFixed(2)}'),
+                  if (_paymentMethod == 'card' && fee > 0)
+                    _SummaryRow('Comisión Tarjeta', '\$${fee.toStringAsFixed(2)}'),
+                  const Divider(),
+                  _SummaryRow('TOTAL', '\$${finalTotal.toStringAsFixed(2)}', isTotal: true),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _paymentMethod,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Método de pago',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+                    items: const [
+                      DropdownMenuItem(value: 'cash', child: Text('💵 Efectivo')),
+                      DropdownMenuItem(value: 'card', child: Text('💳 Tarjeta')),
+                      DropdownMenuItem(
+                          value: 'transfer', child: Text('🏦 Transferencia')),
+                    ],
+                    onChanged: (v) => setState(() => _paymentMethod = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: _ncfType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Tipo de Comprobante (RD)',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Sin Comprobante')),
+                      ...DRUtils.ncfTypes.entries.map((e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          )),
+                    ],
+                    onChanged: (v) => setState(() => _ncfType = v),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: GradientButton(
+                      label: 'Emitir Factura',
+                      icon: Icons.receipt_rounded,
+                      onTap: _cart.isEmpty ? null : () => _save(finalTotal, taxAmount, fee),
+                      isLoading: _isLoading,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Widget bodyContent = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: AppSearchBar(
+            hint: 'Buscar producto...',
+            onChanged: (v) => setState(() => _productSearch = v),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.qr_code_scanner_rounded,
+                  color: AppColors.primary),
+              onPressed: () async {
+                var res = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SimpleBarcodeScannerPage(),
+                  ),
+                );
+                if (res is String && res != '-1') {
+                  final p =
+                      products.where((p) => p.sku == res).firstOrNull;
+                  if (p != null) {
+                    _addToCart(p);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Agregado: ${p.name}'),
+                          backgroundColor: AppColors.success),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Producto no encontrado'),
+                          backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 180,
+              mainAxisExtent: 110,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _filteredProducts(products).length,
+            itemBuilder: (_, i) {
+              final p = _filteredProducts(products)[i];
+              final inCart = _cart.any((c) => c.product.id == p.id);
+              return GestureDetector(
+                onTap: () => _addToCart(p),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: inCart
+                        ? AppColors.primary.withOpacity(0.15)
+                        : Theme.of(context).cardTheme.color,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: inCart
+                          ? AppColors.primary
+                          : Theme.of(context).dividerColor,
+                      width: inCart ? 2 : 1,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Icon(Icons.inventory_2_rounded,
+                              color: AppColors.primary, size: 20),
+                          if (inCart)
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check_rounded,
+                                  color: Colors.white, size: 12),
+                            ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        p.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '\$${p.price.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
+      endDrawer: isMobile ? Drawer(child: cartPanel) : null,
       appBar: AppBar(
         title: const Text('Nueva Factura'),
         leading: IconButton(
@@ -54,9 +272,20 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (_cart.isNotEmpty)
+          if (isMobile)
+            Builder(
+              builder: (context) => IconButton(
+                icon: Badge(
+                  label: Text(_cart.length.toString()),
+                  isLabelVisible: _cart.isNotEmpty,
+                  child: const Icon(Icons.shopping_cart_rounded),
+                ),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              ),
+            ),
+          if (!isMobile && _cart.isNotEmpty)
             TextButton.icon(
-              onPressed: _save,
+              onPressed: () => _save(finalTotal, taxAmount, fee),
               icon: const Icon(Icons.check_rounded, color: AppColors.success),
               label: const Text('Emitir',
                   style: TextStyle(
@@ -66,219 +295,14 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,
-        child: Row(
-          children: [
-            // Left: Product selector
-            Expanded(
-              flex: 3,
-              child: Column(
+        child: isMobile 
+            ? bodyContent 
+            : Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: AppSearchBar(
-                      hint: 'Buscar producto...',
-                      onChanged: (v) =>
-                          setState(() => _productSearch = v),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
-                        onPressed: () async {
-                          var res = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SimpleBarcodeScannerPage(),
-                            ),
-                          );
-                          if (res is String && res != '-1') {
-                            final p = products.where((p) => p.sku == res).firstOrNull;
-                            if (p != null) {
-                              _addToCart(p);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Agregado: ${p.name}'), backgroundColor: AppColors.success),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Producto no encontrado'), backgroundColor: AppColors.error),
-                              );
-                            }
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 180,
-                        mainAxisExtent: 110,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                      ),
-                      itemCount: _filteredProducts(products).length,
-                      itemBuilder: (_, i) {
-                        final p = _filteredProducts(products)[i];
-                        final inCart = _cart.any(
-                            (c) => c.product.id == p.id);
-                        return GestureDetector(
-                          onTap: () => _addToCart(p),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            decoration: BoxDecoration(
-                              color: inCart
-                                  ? AppColors.primary.withOpacity(0.15)
-                                  : Theme.of(context).cardTheme.color,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: inCart
-                                    ? AppColors.primary
-                                    : Theme.of(context).dividerColor,
-                                width: inCart ? 2 : 1,
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Icon(Icons.inventory_2_rounded,
-                                        color: AppColors.primary, size: 20),
-                                    if (inCart)
-                                      Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.primary,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.check_rounded,
-                                            color: Colors.white, size: 12),
-                                      ),
-                                  ],
-                                ),
-                                const Spacer(),
-                                Text(
-                                  p.name,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '\$${p.price.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  Expanded(child: bodyContent),
+                  cartPanel,
                 ],
               ),
-            ),
-            // Right: Cart & summary
-            Container(
-              width: MediaQuery.of(context).size.width < 600 ? 
-                MediaQuery.of(context).size.width : 280,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  left: BorderSide(color: Theme.of(context).dividerColor),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Customer selector
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _CustomerSelector(
-                      selected: _selectedCustomer,
-                      onSelect: (c) =>
-                          setState(() => _selectedCustomer = c),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Cart items
-                  Expanded(
-                    child: _cart.isEmpty
-                        ? const Center(
-                            child: Text('Selecciona productos',
-                                style: TextStyle(color: Colors.grey)))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(8),
-                            itemCount: _cart.length,
-                            itemBuilder: (_, i) =>
-                                _CartItemTile(
-                              item: _cart[i],
-                              onRemove: () => setState(
-                                  () => _cart.removeAt(i)),
-                              onQuantityChange: (q) =>
-                                  setState(() => _cart[i].quantity = q),
-                            ),
-                          ),
-                  ),
-                  const Divider(height: 1),
-                  // Summary & checkout
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _SummaryRow('Subtotal',
-                            '\$${_subtotal.toStringAsFixed(2)}'),
-                        _SummaryRow(
-                            'Impuesto', '\$${_tax.toStringAsFixed(2)}'),
-                        const Divider(),
-                        _SummaryRow(
-                          'TOTAL',
-                          '\$${_total.toStringAsFixed(2)}',
-                          isTotal: true,
-                        ),
-                        const SizedBox(height: 12),
-                        // Payment method
-                        DropdownButtonFormField<String>(
-                          value: _paymentMethod,
-                          decoration: const InputDecoration(
-                              labelText: 'Método de pago',
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10)),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'cash', child: Text('💵 Efectivo')),
-                            DropdownMenuItem(
-                                value: 'card', child: Text('💳 Tarjeta')),
-                            DropdownMenuItem(
-                                value: 'transfer',
-                                child: Text('🏦 Transferencia')),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _paymentMethod = v!),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: GradientButton(
-                            label: 'Emitir Factura',
-                            icon: Icons.receipt_rounded,
-                            onTap: _cart.isEmpty ? null : _save,
-                            isLoading: _isLoading,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -302,7 +326,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     });
   }
 
-  Future<void> _save() async {
+  Future<void> _save(double total, double taxAmount, double feeAmount) async {
     if (_cart.isEmpty) return;
     setState(() => _isLoading = true);
     try {
@@ -313,16 +337,26 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
       final invoiceNum =
           'FAC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
+      String? ncf;
+      if (_ncfType != null) {
+        ncf = await db.ncfDao.getNextNCF(bId, _ncfType!);
+        if (ncf == null) {
+          throw Exception('No hay secuencias de NCF disponibles para este tipo.');
+        }
+      }
+
       await db.invoicesDao.insertInvoice(InvoicesCompanion(
         id: drift.Value(id),
         invoiceNumber: drift.Value(invoiceNum),
+        ncf: drift.Value(ncf),
+        ncfType: drift.Value(_ncfType),
         customerId: drift.Value(_selectedCustomer?.id),
         customerName:
             drift.Value(_selectedCustomer?.name ?? 'Cliente general'),
         status: const drift.Value('paid'),
         subtotal: drift.Value(_subtotal),
-        taxAmount: drift.Value(_tax),
-        total: drift.Value(_total),
+        taxAmount: drift.Value(taxAmount),
+        total: drift.Value(total),
         paymentMethod: drift.Value(_paymentMethod),
         businessId: drift.Value(bId),
         notes: drift.Value(_notesCtrl.text.isEmpty ? null : _notesCtrl.text),
@@ -353,7 +387,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
           'customerName': _selectedCustomer?.name ?? 'Cliente general',
           'status': 'paid',
           'subtotal': _subtotal,
-          'total': _total,
+          'taxAmount': taxAmount,
+          'cardFee': feeAmount,
+          'total': total,
           'paymentMethod': _paymentMethod,
           'businessId': bId,
           'createdAt': DateTime.now().toIso8601String(),
@@ -487,7 +523,9 @@ class _SummaryRow extends StatelessWidget {
                   fontSize: isTotal ? 16 : 13,
                   fontWeight:
                       isTotal ? FontWeight.w800 : FontWeight.w400,
-                  color: isTotal ? AppColors.primary : Colors.grey)),
+                  color: isTotal 
+                      ? AppColors.primary 
+                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
           Text(value,
               style: TextStyle(
                   fontSize: isTotal ? 16 : 13,

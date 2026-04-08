@@ -206,4 +206,37 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase> with _$ExpensesDaoMixin 
     return (delete(expenses)..where((e) => e.id.equals(id))).go();
   }
 }
+@DriftAccessor(tables: [NcfSequences])
+class NcfDao extends DatabaseAccessor<AppDatabase> with _$NcfDaoMixin {
+  NcfDao(super.db);
 
+  Stream<List<NcfSequence>> watchAll(String businessId) =>
+      (select(ncfSequences)..where((s) => s.businessId.equals(businessId))).watch();
+
+  Future<void> upsert(NcfSequencesCompanion sequence) =>
+      into(ncfSequences).insertOnConflictUpdate(sequence);
+
+  Future<void> deleteSequence(String id) =>
+      (delete(ncfSequences)..where((s) => s.id.equals(id))).go();
+
+  Future<String?> getNextNCF(String businessId, String type) async {
+    final seq = await (select(ncfSequences)
+          ..where((s) =>
+              s.businessId.equals(businessId) &
+              s.type.equals(type) &
+              s.isActive.equals(true)))
+        .getSingleOrNull();
+
+    if (seq == null) return null;
+
+    final nextVal = seq.lastUsed + 1;
+    if (nextVal > seq.to) return null;
+
+    // Update last used
+    await (update(ncfSequences)..where((s) => s.id.equals(seq.id)))
+        .write(NcfSequencesCompanion(lastUsed: Value(nextVal)));
+
+    // Format B0100000001
+    return '${seq.prefix}${seq.type}${nextVal.toString().padLeft(8, '0')}';
+  }
+}

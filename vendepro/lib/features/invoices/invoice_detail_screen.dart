@@ -216,6 +216,10 @@ class InvoiceDetailScreen extends ConsumerWidget {
                       pw.Text(
                           'Impuesto: \$${invoice.taxAmount.toStringAsFixed(2)}',
                           style: const pw.TextStyle(fontSize: 12)),
+                      if (invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount > 0.01)
+                        pw.Text(
+                            'Comisión Tarjeta: \$${(invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount).toStringAsFixed(2)}',
+                            style: const pw.TextStyle(fontSize: 12)),
                       pw.SizedBox(height: 4),
                       pw.Text(
                           'TOTAL: \$${invoice.total.toStringAsFixed(2)}',
@@ -401,6 +405,8 @@ class _TotalsSection extends StatelessWidget {
             _TotalRow('Descuento',
                 '-\$${invoice.discountAmount.toStringAsFixed(2)}',
                 color: AppColors.success),
+          if (invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount > 0.01)
+            _TotalRow('Comisión Tarjeta', '\$${(invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount).toStringAsFixed(2)}'),
           const Divider(),
           _TotalRow('TOTAL', '\$${invoice.total.toStringAsFixed(2)}',
               isTotal: true),

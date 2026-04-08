@@ -65,6 +65,21 @@ final customersStreamProvider = StreamProvider.autoDispose((ref) {
   return db.customersDao.watchAll(bId);
 });
 
+// Card Fee from Business Settings
+final cardFeeProvider = FutureProvider<double>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final val = await db.businessDao.getSetting('card_fee_percentage');
+  return double.tryParse(val ?? '0') ?? 0.0;
+});
+
+// Tax Rate from Business
+final taxRateProvider = FutureProvider<double>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  final b = await db.businessDao.getBusiness(bId);
+  return b?.taxRate ?? 0.0;
+});
+
 // Expenses stream
 final expensesStreamProvider = StreamProvider.autoDispose((ref) {
   final db = ref.watch(databaseProvider);

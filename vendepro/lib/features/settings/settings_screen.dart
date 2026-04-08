@@ -1,4 +1,5 @@
-// lib/features/settings/settings_screen.dart
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,10 +21,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _taxCtrl = TextEditingController();
+  final _cardFeeCtrl = TextEditingController();
   String _currency = 'USD';
   String _currencySymbol = '\$';
   bool _isLoading = false;
   bool _loaded = false;
+  String? _logoBase64;
 
   // Secret admin tap counter
   int _logoTapCount = 0;
@@ -47,9 +50,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _taxCtrl.text = b.taxRate.toString();
         _currency = b.currency;
         _currencySymbol = b.currencySymbol;
+        _logoBase64 = b.logoPath;
         _loaded = true;
       });
     }
+    final feeVal = await db.businessDao.getSetting('card_fee_percentage');
+    if (mounted) setState(() => _cardFeeCtrl.text = feeVal ?? '0.0');
   }
 
   Future<void> _save() async {
@@ -69,8 +75,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         taxRate: drift.Value(double.tryParse(_taxCtrl.text) ?? 0.0),
         currency: drift.Value(_currency),
         currencySymbol: drift.Value(_currencySymbol),
+        logoPath: drift.Value(_logoBase64),
         updatedAt: drift.Value(DateTime.now()),
       ));
+      
+      await db.businessDao.setSetting('card_fee_percentage', _cardFeeCtrl.text.trim().isEmpty ? '0' : _cardFeeCtrl.text.trim());
+      
+      // Invalidate the provider so fresh invoices pick it up immediately
+      ref.invalidate(cardFeeProvider);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -84,7 +97,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _onLogoTap() {
+  Future<void> _pickLogo() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 400,
+      maxHeight: 400,
+      imageQuality: 80,
+    );
+
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _logoBase64 = base64Encode(bytes);
+      });
+    }
+  }
+
+  void _onAdminTap() {
     _logoTapCount++;
     if (_logoTapCount >= 7) {
       _logoTapCount = 0;
@@ -147,32 +177,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             // Business logo area (secret admin trigger - 7 taps)
             Center(
-              child: GestureDetector(
-                onTap: _onLogoTap,
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+              child: Stack(
+                children: [
+                  GestureDetector(
+                    onTap: _pickLogo,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary, width: 2),
+                        image: _logoBase64 != null
+                            ? DecorationImage(
+                                image: MemoryImage(base64Decode(_logoBase64!)),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                    ],
+                      child: _logoBase64 == null
+                          ? const Icon(Icons.storefront_rounded,
+                              color: AppColors.primary, size: 48)
+                          : null,
+                    ),
                   ),
-                  child: const Icon(Icons.storefront_rounded,
-                      color: Colors.white, size: 44),
-                ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      radius: 16,
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                        color: Colors.white,
+                        onPressed: _pickLogo,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             const Center(
               child: Text(
-                'Toca el logo para cambiar',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                'Logo de la empresa',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 28),
@@ -204,6 +253,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 _field('Tasa de impuesto (%)', _taxCtrl,
                     icon: Icons.percent_rounded,
+                    type: TextInputType.number),
+                const SizedBox(height: 12),
+                _field('Comisión de Tarjeta (%)', _cardFeeCtrl,
+                    icon: Icons.credit_card_rounded,
                     type: TextInputType.number),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -267,11 +320,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 32),
 
             // App version
-            const Center(
-              child: Text(
-                'VendePro v1.0.0\n© 2025 VendePro Platform',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+            GestureDetector(
+              onTap: _onAdminTap,
+              child: const Center(
+                child: Text(
+                  'VendePro v1.0.0\n© 2025 VendePro Platform',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ),
             ),
           ],

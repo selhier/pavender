@@ -17,6 +17,7 @@ part 'app_database.g.dart';
     SyncQueue,
     AppSettings,
     Expenses,
+    NcfSequences,
   ],
   daos: [
     ProductsDao,
@@ -25,13 +26,14 @@ part 'app_database.g.dart';
     SyncDao,
     BusinessDao,
     ExpensesDao,
+    NcfDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -43,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
             name: const Value('Mi Negocio'),
             currency: const Value('USD'),
             currencySymbol: const Value('\$'),
-            taxRate: const Value(0.0),
+            taxRate: const Value(18.0),
             commissionRate: const Value(5.0),
           ));
           // Insert default categories
@@ -54,6 +56,18 @@ class AppDatabase extends _$AppDatabase {
               name: Value(cat),
               businessId: const Value('default_business'),
             ));
+          }
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // Add expenses table created in version 2
+            await m.createTable(expenses);
+          }
+          if (from < 3) {
+            // Add NCF support columns and sequences table
+            await m.addColumn(invoices, invoices.ncf);
+            await m.addColumn(invoices, invoices.ncfType);
+            await m.createTable(ncfSequences);
           }
         },
       );

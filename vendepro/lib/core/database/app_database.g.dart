@@ -2219,6 +2219,17 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('cash'));
+  static const VerificationMeta _ncfMeta = const VerificationMeta('ncf');
+  @override
+  late final GeneratedColumn<String> ncf = GeneratedColumn<String>(
+      'ncf', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ncfTypeMeta =
+      const VerificationMeta('ncfType');
+  @override
+  late final GeneratedColumn<String> ncfType = GeneratedColumn<String>(
+      'ncf_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _businessIdMeta =
       const VerificationMeta('businessId');
   @override
@@ -2271,6 +2282,8 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
         total,
         notes,
         paymentMethod,
+        ncf,
+        ncfType,
         businessId,
         synced,
         issuedAt,
@@ -2344,6 +2357,14 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
           paymentMethod.isAcceptableOrUnknown(
               data['payment_method']!, _paymentMethodMeta));
     }
+    if (data.containsKey('ncf')) {
+      context.handle(
+          _ncfMeta, ncf.isAcceptableOrUnknown(data['ncf']!, _ncfMeta));
+    }
+    if (data.containsKey('ncf_type')) {
+      context.handle(_ncfTypeMeta,
+          ncfType.isAcceptableOrUnknown(data['ncf_type']!, _ncfTypeMeta));
+    }
     if (data.containsKey('business_id')) {
       context.handle(
           _businessIdMeta,
@@ -2399,6 +2420,10 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       paymentMethod: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}payment_method'])!,
+      ncf: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ncf']),
+      ncfType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ncf_type']),
       businessId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}business_id'])!,
       synced: attachedDatabase.typeMapping
@@ -2430,6 +2455,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
   final double total;
   final String? notes;
   final String paymentMethod;
+  final String? ncf;
+  final String? ncfType;
   final String businessId;
   final bool synced;
   final DateTime issuedAt;
@@ -2447,6 +2474,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       required this.total,
       this.notes,
       required this.paymentMethod,
+      this.ncf,
+      this.ncfType,
       required this.businessId,
       required this.synced,
       required this.issuedAt,
@@ -2472,6 +2501,12 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       map['notes'] = Variable<String>(notes);
     }
     map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || ncf != null) {
+      map['ncf'] = Variable<String>(ncf);
+    }
+    if (!nullToAbsent || ncfType != null) {
+      map['ncf_type'] = Variable<String>(ncfType);
+    }
     map['business_id'] = Variable<String>(businessId);
     map['synced'] = Variable<bool>(synced);
     map['issued_at'] = Variable<DateTime>(issuedAt);
@@ -2498,6 +2533,10 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       paymentMethod: Value(paymentMethod),
+      ncf: ncf == null && nullToAbsent ? const Value.absent() : Value(ncf),
+      ncfType: ncfType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ncfType),
       businessId: Value(businessId),
       synced: Value(synced),
       issuedAt: Value(issuedAt),
@@ -2521,6 +2560,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       total: serializer.fromJson<double>(json['total']),
       notes: serializer.fromJson<String?>(json['notes']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      ncf: serializer.fromJson<String?>(json['ncf']),
+      ncfType: serializer.fromJson<String?>(json['ncfType']),
       businessId: serializer.fromJson<String>(json['businessId']),
       synced: serializer.fromJson<bool>(json['synced']),
       issuedAt: serializer.fromJson<DateTime>(json['issuedAt']),
@@ -2543,6 +2584,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       'total': serializer.toJson<double>(total),
       'notes': serializer.toJson<String?>(notes),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'ncf': serializer.toJson<String?>(ncf),
+      'ncfType': serializer.toJson<String?>(ncfType),
       'businessId': serializer.toJson<String>(businessId),
       'synced': serializer.toJson<bool>(synced),
       'issuedAt': serializer.toJson<DateTime>(issuedAt),
@@ -2563,6 +2606,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           double? total,
           Value<String?> notes = const Value.absent(),
           String? paymentMethod,
+          Value<String?> ncf = const Value.absent(),
+          Value<String?> ncfType = const Value.absent(),
           String? businessId,
           bool? synced,
           DateTime? issuedAt,
@@ -2581,6 +2626,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
         total: total ?? this.total,
         notes: notes.present ? notes.value : this.notes,
         paymentMethod: paymentMethod ?? this.paymentMethod,
+        ncf: ncf.present ? ncf.value : this.ncf,
+        ncfType: ncfType.present ? ncfType.value : this.ncfType,
         businessId: businessId ?? this.businessId,
         synced: synced ?? this.synced,
         issuedAt: issuedAt ?? this.issuedAt,
@@ -2609,6 +2656,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       paymentMethod: data.paymentMethod.present
           ? data.paymentMethod.value
           : this.paymentMethod,
+      ncf: data.ncf.present ? data.ncf.value : this.ncf,
+      ncfType: data.ncfType.present ? data.ncfType.value : this.ncfType,
       businessId:
           data.businessId.present ? data.businessId.value : this.businessId,
       synced: data.synced.present ? data.synced.value : this.synced,
@@ -2632,6 +2681,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           ..write('total: $total, ')
           ..write('notes: $notes, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('ncf: $ncf, ')
+          ..write('ncfType: $ncfType, ')
           ..write('businessId: $businessId, ')
           ..write('synced: $synced, ')
           ..write('issuedAt: $issuedAt, ')
@@ -2654,6 +2705,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       total,
       notes,
       paymentMethod,
+      ncf,
+      ncfType,
       businessId,
       synced,
       issuedAt,
@@ -2674,6 +2727,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           other.total == this.total &&
           other.notes == this.notes &&
           other.paymentMethod == this.paymentMethod &&
+          other.ncf == this.ncf &&
+          other.ncfType == this.ncfType &&
           other.businessId == this.businessId &&
           other.synced == this.synced &&
           other.issuedAt == this.issuedAt &&
@@ -2693,6 +2748,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
   final Value<double> total;
   final Value<String?> notes;
   final Value<String> paymentMethod;
+  final Value<String?> ncf;
+  final Value<String?> ncfType;
   final Value<String> businessId;
   final Value<bool> synced;
   final Value<DateTime> issuedAt;
@@ -2711,6 +2768,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     this.total = const Value.absent(),
     this.notes = const Value.absent(),
     this.paymentMethod = const Value.absent(),
+    this.ncf = const Value.absent(),
+    this.ncfType = const Value.absent(),
     this.businessId = const Value.absent(),
     this.synced = const Value.absent(),
     this.issuedAt = const Value.absent(),
@@ -2730,6 +2789,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     this.total = const Value.absent(),
     this.notes = const Value.absent(),
     this.paymentMethod = const Value.absent(),
+    this.ncf = const Value.absent(),
+    this.ncfType = const Value.absent(),
     required String businessId,
     this.synced = const Value.absent(),
     this.issuedAt = const Value.absent(),
@@ -2751,6 +2812,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     Expression<double>? total,
     Expression<String>? notes,
     Expression<String>? paymentMethod,
+    Expression<String>? ncf,
+    Expression<String>? ncfType,
     Expression<String>? businessId,
     Expression<bool>? synced,
     Expression<DateTime>? issuedAt,
@@ -2770,6 +2833,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       if (total != null) 'total': total,
       if (notes != null) 'notes': notes,
       if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (ncf != null) 'ncf': ncf,
+      if (ncfType != null) 'ncf_type': ncfType,
       if (businessId != null) 'business_id': businessId,
       if (synced != null) 'synced': synced,
       if (issuedAt != null) 'issued_at': issuedAt,
@@ -2791,6 +2856,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       Value<double>? total,
       Value<String?>? notes,
       Value<String>? paymentMethod,
+      Value<String?>? ncf,
+      Value<String?>? ncfType,
       Value<String>? businessId,
       Value<bool>? synced,
       Value<DateTime>? issuedAt,
@@ -2809,6 +2876,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       total: total ?? this.total,
       notes: notes ?? this.notes,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      ncf: ncf ?? this.ncf,
+      ncfType: ncfType ?? this.ncfType,
       businessId: businessId ?? this.businessId,
       synced: synced ?? this.synced,
       issuedAt: issuedAt ?? this.issuedAt,
@@ -2854,6 +2923,12 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     if (paymentMethod.present) {
       map['payment_method'] = Variable<String>(paymentMethod.value);
     }
+    if (ncf.present) {
+      map['ncf'] = Variable<String>(ncf.value);
+    }
+    if (ncfType.present) {
+      map['ncf_type'] = Variable<String>(ncfType.value);
+    }
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
     }
@@ -2889,6 +2964,8 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
           ..write('total: $total, ')
           ..write('notes: $notes, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('ncf: $ncf, ')
+          ..write('ncfType: $ncfType, ')
           ..write('businessId: $businessId, ')
           ..write('synced: $synced, ')
           ..write('issuedAt: $issuedAt, ')
@@ -4405,6 +4482,461 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   }
 }
 
+class $NcfSequencesTable extends NcfSequences
+    with TableInfo<$NcfSequencesTable, NcfSequence> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NcfSequencesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _prefixMeta = const VerificationMeta('prefix');
+  @override
+  late final GeneratedColumn<String> prefix = GeneratedColumn<String>(
+      'prefix', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('B'));
+  static const VerificationMeta _fromMeta = const VerificationMeta('from');
+  @override
+  late final GeneratedColumn<int> from = GeneratedColumn<int>(
+      'from', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _toMeta = const VerificationMeta('to');
+  @override
+  late final GeneratedColumn<int> to = GeneratedColumn<int>(
+      'to', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _lastUsedMeta =
+      const VerificationMeta('lastUsed');
+  @override
+  late final GeneratedColumn<int> lastUsed = GeneratedColumn<int>(
+      'last_used', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _businessIdMeta =
+      const VerificationMeta('businessId');
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+      'business_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isActiveMeta =
+      const VerificationMeta('isActive');
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+      'is_active', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_active" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, type, prefix, from, to, lastUsed, businessId, isActive, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ncf_sequences';
+  @override
+  VerificationContext validateIntegrity(Insertable<NcfSequence> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('prefix')) {
+      context.handle(_prefixMeta,
+          prefix.isAcceptableOrUnknown(data['prefix']!, _prefixMeta));
+    }
+    if (data.containsKey('from')) {
+      context.handle(
+          _fromMeta, from.isAcceptableOrUnknown(data['from']!, _fromMeta));
+    } else if (isInserting) {
+      context.missing(_fromMeta);
+    }
+    if (data.containsKey('to')) {
+      context.handle(_toMeta, to.isAcceptableOrUnknown(data['to']!, _toMeta));
+    } else if (isInserting) {
+      context.missing(_toMeta);
+    }
+    if (data.containsKey('last_used')) {
+      context.handle(_lastUsedMeta,
+          lastUsed.isAcceptableOrUnknown(data['last_used']!, _lastUsedMeta));
+    } else if (isInserting) {
+      context.missing(_lastUsedMeta);
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+          _businessIdMeta,
+          businessId.isAcceptableOrUnknown(
+              data['business_id']!, _businessIdMeta));
+    } else if (isInserting) {
+      context.missing(_businessIdMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(_isActiveMeta,
+          isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NcfSequence map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NcfSequence(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      prefix: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}prefix'])!,
+      from: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}from'])!,
+      to: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}to'])!,
+      lastUsed: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}last_used'])!,
+      businessId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}business_id'])!,
+      isActive: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_active'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $NcfSequencesTable createAlias(String alias) {
+    return $NcfSequencesTable(attachedDatabase, alias);
+  }
+}
+
+class NcfSequence extends DataClass implements Insertable<NcfSequence> {
+  final String id;
+  final String type;
+  final String prefix;
+  final int from;
+  final int to;
+  final int lastUsed;
+  final String businessId;
+  final bool isActive;
+  final DateTime updatedAt;
+  const NcfSequence(
+      {required this.id,
+      required this.type,
+      required this.prefix,
+      required this.from,
+      required this.to,
+      required this.lastUsed,
+      required this.businessId,
+      required this.isActive,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['type'] = Variable<String>(type);
+    map['prefix'] = Variable<String>(prefix);
+    map['from'] = Variable<int>(from);
+    map['to'] = Variable<int>(to);
+    map['last_used'] = Variable<int>(lastUsed);
+    map['business_id'] = Variable<String>(businessId);
+    map['is_active'] = Variable<bool>(isActive);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  NcfSequencesCompanion toCompanion(bool nullToAbsent) {
+    return NcfSequencesCompanion(
+      id: Value(id),
+      type: Value(type),
+      prefix: Value(prefix),
+      from: Value(from),
+      to: Value(to),
+      lastUsed: Value(lastUsed),
+      businessId: Value(businessId),
+      isActive: Value(isActive),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory NcfSequence.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NcfSequence(
+      id: serializer.fromJson<String>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      prefix: serializer.fromJson<String>(json['prefix']),
+      from: serializer.fromJson<int>(json['from']),
+      to: serializer.fromJson<int>(json['to']),
+      lastUsed: serializer.fromJson<int>(json['lastUsed']),
+      businessId: serializer.fromJson<String>(json['businessId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'type': serializer.toJson<String>(type),
+      'prefix': serializer.toJson<String>(prefix),
+      'from': serializer.toJson<int>(from),
+      'to': serializer.toJson<int>(to),
+      'lastUsed': serializer.toJson<int>(lastUsed),
+      'businessId': serializer.toJson<String>(businessId),
+      'isActive': serializer.toJson<bool>(isActive),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  NcfSequence copyWith(
+          {String? id,
+          String? type,
+          String? prefix,
+          int? from,
+          int? to,
+          int? lastUsed,
+          String? businessId,
+          bool? isActive,
+          DateTime? updatedAt}) =>
+      NcfSequence(
+        id: id ?? this.id,
+        type: type ?? this.type,
+        prefix: prefix ?? this.prefix,
+        from: from ?? this.from,
+        to: to ?? this.to,
+        lastUsed: lastUsed ?? this.lastUsed,
+        businessId: businessId ?? this.businessId,
+        isActive: isActive ?? this.isActive,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  NcfSequence copyWithCompanion(NcfSequencesCompanion data) {
+    return NcfSequence(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      prefix: data.prefix.present ? data.prefix.value : this.prefix,
+      from: data.from.present ? data.from.value : this.from,
+      to: data.to.present ? data.to.value : this.to,
+      lastUsed: data.lastUsed.present ? data.lastUsed.value : this.lastUsed,
+      businessId:
+          data.businessId.present ? data.businessId.value : this.businessId,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NcfSequence(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('prefix: $prefix, ')
+          ..write('from: $from, ')
+          ..write('to: $to, ')
+          ..write('lastUsed: $lastUsed, ')
+          ..write('businessId: $businessId, ')
+          ..write('isActive: $isActive, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, type, prefix, from, to, lastUsed, businessId, isActive, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NcfSequence &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.prefix == this.prefix &&
+          other.from == this.from &&
+          other.to == this.to &&
+          other.lastUsed == this.lastUsed &&
+          other.businessId == this.businessId &&
+          other.isActive == this.isActive &&
+          other.updatedAt == this.updatedAt);
+}
+
+class NcfSequencesCompanion extends UpdateCompanion<NcfSequence> {
+  final Value<String> id;
+  final Value<String> type;
+  final Value<String> prefix;
+  final Value<int> from;
+  final Value<int> to;
+  final Value<int> lastUsed;
+  final Value<String> businessId;
+  final Value<bool> isActive;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const NcfSequencesCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.prefix = const Value.absent(),
+    this.from = const Value.absent(),
+    this.to = const Value.absent(),
+    this.lastUsed = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NcfSequencesCompanion.insert({
+    required String id,
+    required String type,
+    this.prefix = const Value.absent(),
+    required int from,
+    required int to,
+    required int lastUsed,
+    required String businessId,
+    this.isActive = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        type = Value(type),
+        from = Value(from),
+        to = Value(to),
+        lastUsed = Value(lastUsed),
+        businessId = Value(businessId);
+  static Insertable<NcfSequence> custom({
+    Expression<String>? id,
+    Expression<String>? type,
+    Expression<String>? prefix,
+    Expression<int>? from,
+    Expression<int>? to,
+    Expression<int>? lastUsed,
+    Expression<String>? businessId,
+    Expression<bool>? isActive,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (prefix != null) 'prefix': prefix,
+      if (from != null) 'from': from,
+      if (to != null) 'to': to,
+      if (lastUsed != null) 'last_used': lastUsed,
+      if (businessId != null) 'business_id': businessId,
+      if (isActive != null) 'is_active': isActive,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NcfSequencesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? type,
+      Value<String>? prefix,
+      Value<int>? from,
+      Value<int>? to,
+      Value<int>? lastUsed,
+      Value<String>? businessId,
+      Value<bool>? isActive,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return NcfSequencesCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      prefix: prefix ?? this.prefix,
+      from: from ?? this.from,
+      to: to ?? this.to,
+      lastUsed: lastUsed ?? this.lastUsed,
+      businessId: businessId ?? this.businessId,
+      isActive: isActive ?? this.isActive,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (prefix.present) {
+      map['prefix'] = Variable<String>(prefix.value);
+    }
+    if (from.present) {
+      map['from'] = Variable<int>(from.value);
+    }
+    if (to.present) {
+      map['to'] = Variable<int>(to.value);
+    }
+    if (lastUsed.present) {
+      map['last_used'] = Variable<int>(lastUsed.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NcfSequencesCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('prefix: $prefix, ')
+          ..write('from: $from, ')
+          ..write('to: $to, ')
+          ..write('lastUsed: $lastUsed, ')
+          ..write('businessId: $businessId, ')
+          ..write('isActive: $isActive, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4417,12 +4949,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncQueueTable syncQueue = $SyncQueueTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $ExpensesTable expenses = $ExpensesTable(this);
+  late final $NcfSequencesTable ncfSequences = $NcfSequencesTable(this);
   late final ProductsDao productsDao = ProductsDao(this as AppDatabase);
   late final InvoicesDao invoicesDao = InvoicesDao(this as AppDatabase);
   late final CustomersDao customersDao = CustomersDao(this as AppDatabase);
   late final SyncDao syncDao = SyncDao(this as AppDatabase);
   late final BusinessDao businessDao = BusinessDao(this as AppDatabase);
   late final ExpensesDao expensesDao = ExpensesDao(this as AppDatabase);
+  late final NcfDao ncfDao = NcfDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4436,7 +4970,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         invoiceItems,
         syncQueue,
         appSettings,
-        expenses
+        expenses,
+        ncfSequences
       ];
 }
 
@@ -5467,6 +6002,8 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<double> total,
   Value<String?> notes,
   Value<String> paymentMethod,
+  Value<String?> ncf,
+  Value<String?> ncfType,
   required String businessId,
   Value<bool> synced,
   Value<DateTime> issuedAt,
@@ -5486,6 +6023,8 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<double> total,
   Value<String?> notes,
   Value<String> paymentMethod,
+  Value<String?> ncf,
+  Value<String?> ncfType,
   Value<String> businessId,
   Value<bool> synced,
   Value<DateTime> issuedAt,
@@ -5536,6 +6075,12 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<String> get paymentMethod => $composableBuilder(
       column: $table.paymentMethod, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ncf => $composableBuilder(
+      column: $table.ncf, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ncfType => $composableBuilder(
+      column: $table.ncfType, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => ColumnFilters(column));
@@ -5599,6 +6144,12 @@ class $$InvoicesTableOrderingComposer
       column: $table.paymentMethod,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get ncf => $composableBuilder(
+      column: $table.ncf, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ncfType => $composableBuilder(
+      column: $table.ncfType, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => ColumnOrderings(column));
 
@@ -5657,6 +6208,12 @@ class $$InvoicesTableAnnotationComposer
   GeneratedColumn<String> get paymentMethod => $composableBuilder(
       column: $table.paymentMethod, builder: (column) => column);
 
+  GeneratedColumn<String> get ncf =>
+      $composableBuilder(column: $table.ncf, builder: (column) => column);
+
+  GeneratedColumn<String> get ncfType =>
+      $composableBuilder(column: $table.ncfType, builder: (column) => column);
+
   GeneratedColumn<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => column);
 
@@ -5707,6 +6264,8 @@ class $$InvoicesTableTableManager extends RootTableManager<
             Value<double> total = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String> paymentMethod = const Value.absent(),
+            Value<String?> ncf = const Value.absent(),
+            Value<String?> ncfType = const Value.absent(),
             Value<String> businessId = const Value.absent(),
             Value<bool> synced = const Value.absent(),
             Value<DateTime> issuedAt = const Value.absent(),
@@ -5726,6 +6285,8 @@ class $$InvoicesTableTableManager extends RootTableManager<
             total: total,
             notes: notes,
             paymentMethod: paymentMethod,
+            ncf: ncf,
+            ncfType: ncfType,
             businessId: businessId,
             synced: synced,
             issuedAt: issuedAt,
@@ -5745,6 +6306,8 @@ class $$InvoicesTableTableManager extends RootTableManager<
             Value<double> total = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String> paymentMethod = const Value.absent(),
+            Value<String?> ncf = const Value.absent(),
+            Value<String?> ncfType = const Value.absent(),
             required String businessId,
             Value<bool> synced = const Value.absent(),
             Value<DateTime> issuedAt = const Value.absent(),
@@ -5764,6 +6327,8 @@ class $$InvoicesTableTableManager extends RootTableManager<
             total: total,
             notes: notes,
             paymentMethod: paymentMethod,
+            ncf: ncf,
+            ncfType: ncfType,
             businessId: businessId,
             synced: synced,
             issuedAt: issuedAt,
@@ -6571,6 +7136,239 @@ typedef $$ExpensesTableProcessedTableManager = ProcessedTableManager<
     (Expense, BaseReferences<_$AppDatabase, $ExpensesTable, Expense>),
     Expense,
     PrefetchHooks Function()>;
+typedef $$NcfSequencesTableCreateCompanionBuilder = NcfSequencesCompanion
+    Function({
+  required String id,
+  required String type,
+  Value<String> prefix,
+  required int from,
+  required int to,
+  required int lastUsed,
+  required String businessId,
+  Value<bool> isActive,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+typedef $$NcfSequencesTableUpdateCompanionBuilder = NcfSequencesCompanion
+    Function({
+  Value<String> id,
+  Value<String> type,
+  Value<String> prefix,
+  Value<int> from,
+  Value<int> to,
+  Value<int> lastUsed,
+  Value<String> businessId,
+  Value<bool> isActive,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$NcfSequencesTableFilterComposer
+    extends Composer<_$AppDatabase, $NcfSequencesTable> {
+  $$NcfSequencesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get prefix => $composableBuilder(
+      column: $table.prefix, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get from => $composableBuilder(
+      column: $table.from, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get to => $composableBuilder(
+      column: $table.to, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastUsed => $composableBuilder(
+      column: $table.lastUsed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+      column: $table.businessId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+      column: $table.isActive, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$NcfSequencesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NcfSequencesTable> {
+  $$NcfSequencesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get prefix => $composableBuilder(
+      column: $table.prefix, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get from => $composableBuilder(
+      column: $table.from, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get to => $composableBuilder(
+      column: $table.to, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastUsed => $composableBuilder(
+      column: $table.lastUsed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+      column: $table.businessId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+      column: $table.isActive, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NcfSequencesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NcfSequencesTable> {
+  $$NcfSequencesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get prefix =>
+      $composableBuilder(column: $table.prefix, builder: (column) => column);
+
+  GeneratedColumn<int> get from =>
+      $composableBuilder(column: $table.from, builder: (column) => column);
+
+  GeneratedColumn<int> get to =>
+      $composableBuilder(column: $table.to, builder: (column) => column);
+
+  GeneratedColumn<int> get lastUsed =>
+      $composableBuilder(column: $table.lastUsed, builder: (column) => column);
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+      column: $table.businessId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$NcfSequencesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NcfSequencesTable,
+    NcfSequence,
+    $$NcfSequencesTableFilterComposer,
+    $$NcfSequencesTableOrderingComposer,
+    $$NcfSequencesTableAnnotationComposer,
+    $$NcfSequencesTableCreateCompanionBuilder,
+    $$NcfSequencesTableUpdateCompanionBuilder,
+    (
+      NcfSequence,
+      BaseReferences<_$AppDatabase, $NcfSequencesTable, NcfSequence>
+    ),
+    NcfSequence,
+    PrefetchHooks Function()> {
+  $$NcfSequencesTableTableManager(_$AppDatabase db, $NcfSequencesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NcfSequencesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NcfSequencesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NcfSequencesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<String> prefix = const Value.absent(),
+            Value<int> from = const Value.absent(),
+            Value<int> to = const Value.absent(),
+            Value<int> lastUsed = const Value.absent(),
+            Value<String> businessId = const Value.absent(),
+            Value<bool> isActive = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NcfSequencesCompanion(
+            id: id,
+            type: type,
+            prefix: prefix,
+            from: from,
+            to: to,
+            lastUsed: lastUsed,
+            businessId: businessId,
+            isActive: isActive,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String type,
+            Value<String> prefix = const Value.absent(),
+            required int from,
+            required int to,
+            required int lastUsed,
+            required String businessId,
+            Value<bool> isActive = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NcfSequencesCompanion.insert(
+            id: id,
+            type: type,
+            prefix: prefix,
+            from: from,
+            to: to,
+            lastUsed: lastUsed,
+            businessId: businessId,
+            isActive: isActive,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NcfSequencesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $NcfSequencesTable,
+    NcfSequence,
+    $$NcfSequencesTableFilterComposer,
+    $$NcfSequencesTableOrderingComposer,
+    $$NcfSequencesTableAnnotationComposer,
+    $$NcfSequencesTableCreateCompanionBuilder,
+    $$NcfSequencesTableUpdateCompanionBuilder,
+    (
+      NcfSequence,
+      BaseReferences<_$AppDatabase, $NcfSequencesTable, NcfSequence>
+    ),
+    NcfSequence,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6593,4 +7391,6 @@ class $AppDatabaseManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$ExpensesTableTableManager get expenses =>
       $$ExpensesTableTableManager(_db, _db.expenses);
+  $$NcfSequencesTableTableManager get ncfSequences =>
+      $$NcfSequencesTableTableManager(_db, _db.ncfSequences);
 }

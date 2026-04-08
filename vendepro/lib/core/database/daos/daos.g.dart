@@ -25,3 +25,6 @@ mixin _$BusinessDaoMixin on DatabaseAccessor<AppDatabase> {
 mixin _$ExpensesDaoMixin on DatabaseAccessor<AppDatabase> {
   $ExpensesTable get expenses => attachedDatabase.expenses;
 }
+mixin _$NcfDaoMixin on DatabaseAccessor<AppDatabase> {
+  $NcfSequencesTable get ncfSequences => attachedDatabase.ncfSequences;
+}
