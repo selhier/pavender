@@ -52,6 +52,12 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [success, Color(0xFF059669)],
   );
+
+  static const gradientWarning = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [warning, Color(0xFFD97706)],
+  );
 }
 
 class AppTheme {

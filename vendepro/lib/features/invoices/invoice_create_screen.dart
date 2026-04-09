@@ -16,9 +16,19 @@ class _CartItem {
   final dynamic product;
   int quantity;
   double discount;
-  _CartItem({required this.product, this.quantity = 1, this.discount = 0});
+  final double taxRate;
+  
+  _CartItem({
+    required this.product, 
+    this.quantity = 1, 
+    this.discount = 0,
+    required this.taxRate,
+  });
+
   double get subtotal =>
       (product.price as double) * quantity * (1 - discount / 100);
+      
+  double get itemTaxAmount => subtotal * taxRate;
 }
 
 class InvoiceCreateScreen extends ConsumerStatefulWidget {
@@ -33,7 +43,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   dynamic _selectedCustomer;
   String _paymentMethod = 'cash';
   final _notesCtrl = TextEditingController();
+  final _taxIdCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isValidatingRnc = false;
   String _productSearch = '';
   String? _ncfType; // DR Localization
 
@@ -44,12 +56,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   Widget build(BuildContext context) {
     final products = ref.watch(productsStreamProvider).value ?? [];
     final cardFeePct = ref.watch(cardFeeProvider).value ?? 0.0;
-    final taxRateAsync = ref.watch(taxRateProvider);
-    final taxRate = taxRateAsync.value ?? 0.0;
-    
-    double taxAmount = _subtotal * (taxRate / 100.0);
-    double fee = _paymentMethod == 'card' ? (_subtotal + taxAmount) * (cardFeePct / 100.0) : 0.0;
-    double finalTotal = _subtotal + taxAmount + fee;
+    double totalTaxAmount = _cart.fold(0, (s, i) => s + i.itemTaxAmount);
+    double fee = _paymentMethod == 'card' ? (_subtotal + totalTaxAmount) * (cardFeePct / 100.0) : 0.0;
+    double finalTotal = _subtotal + totalTaxAmount + fee;
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     Widget cartPanel = Container(
@@ -93,7 +102,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
               child: Column(
                 children: [
                   _SummaryRow('Subtotal', '\$${_subtotal.toStringAsFixed(2)}'),
-                  _SummaryRow('Impuesto', '\$${taxAmount.toStringAsFixed(2)}'),
+                  _SummaryRow('Impuesto', '\$${totalTaxAmount.toStringAsFixed(2)}'),
                   if (_paymentMethod == 'card' && fee > 0)
                     _SummaryRow('Comisión Tarjeta', '\$${fee.toStringAsFixed(2)}'),
                   const Divider(),
@@ -132,12 +141,44 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                     onChanged: (v) => setState(() => _ncfType = v),
                   ),
                   const SizedBox(height: 12),
+                  if (_ncfType != null) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _taxIdCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'RNC / Cédula',
+                              hintText: 'Ej. 131996035',
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: _isValidatingRnc ? null : _lookupRNC,
+                          icon: _isValidatingRnc
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.search_rounded),
+                          tooltip: 'Validar RNC en DGII',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     child: GradientButton(
                       label: 'Emitir Factura',
                       icon: Icons.receipt_rounded,
-                      onTap: _cart.isEmpty ? null : () => _save(finalTotal, taxAmount, fee),
+                      onTap: _cart.isEmpty ? null : () => _save(finalTotal, totalTaxAmount, fee),
                       isLoading: _isLoading,
                     ),
                   ),
@@ -285,7 +326,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
             ),
           if (!isMobile && _cart.isNotEmpty)
             TextButton.icon(
-              onPressed: () => _save(finalTotal, taxAmount, fee),
+              onPressed: () => _save(finalTotal, totalTaxAmount, fee),
               icon: const Icon(Icons.check_rounded, color: AppColors.success),
               label: const Text('Emitir',
                   style: TextStyle(
@@ -321,13 +362,61 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
       if (idx >= 0) {
         _cart[idx].quantity++;
       } else {
-        _cart.add(_CartItem(product: product));
+        _cart.add(_CartItem(
+          product: product,
+          taxRate: product.taxRate as double,
+        ));
       }
     });
   }
 
+  Future<void> _lookupRNC() async {
+    if (_taxIdCtrl.text.isEmpty) return;
+    setState(() => _isValidatingRnc = true);
+    try {
+      final res = await ref.read(taxServiceProvider).lookupRNC(_taxIdCtrl.text);
+      if (res != null) {
+        setState(() {
+          _taxIdCtrl.text = res['rnc'] ?? _taxIdCtrl.text;
+          if (_selectedCustomer == null) {
+            // For general customer, we update the name display for this invoice
+            _selectedCustomer = (name: res['name'] ?? 'Cliente general', id: null);
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('RNC Validado: ${res['name']}'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se encontró información para este RNC'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isValidatingRnc = false);
+    }
+  }
+
   Future<void> _save(double total, double taxAmount, double feeAmount) async {
     if (_cart.isEmpty) return;
+    if (_ncfType != null && _taxIdCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El RNC/Cédula es obligatorio para facturas con NCF'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final db = ref.read(databaseProvider);
@@ -341,9 +430,54 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
       if (_ncfType != null) {
         ncf = await db.ncfDao.getNextNCF(bId, _ncfType!);
         if (ncf == null) {
-          throw Exception('No hay secuencias de NCF disponibles para este tipo.');
+          setState(() => _isLoading = false);
+          // Auto-init dialog
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Secuencia no encontrada'),
+              content: Text(
+                  'No tienes una secuencia activa para ${DRUtils.ncfTypes[_ncfType]}. ¿Deseas iniciar una automática desde el número 1 hasta el 10,000?'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Configurar Manual')),
+                ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Iniciar Automática')),
+              ],
+            ),
+          );
+
+          if (confirm == true) {
+            setState(() => _isLoading = true);
+            await db.ncfDao.upsert(NcfSequencesCompanion(
+              id: drift.Value(const Uuid().v4()),
+              type: drift.Value(_ncfType!),
+              prefix: const drift.Value('B'),
+              from: const drift.Value(1),
+              to: const drift.Value(10000),
+              lastUsed: const drift.Value(0),
+              businessId: drift.Value(bId),
+              isActive: const drift.Value(true),
+            ));
+            // Retry getNextNCF
+            ncf = await db.ncfDao.getNextNCF(bId, _ncfType!);
+          }
+
+          if (ncf == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('No hay secuencias de NCF disponibles.')),
+              );
+            }
+            return;
+          }
         }
       }
+
+      final String status = _paymentMethod == 'credit' ? 'issued' : 'paid';
 
       await db.invoicesDao.insertInvoice(InvoicesCompanion(
         id: drift.Value(id),
@@ -353,7 +487,8 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         customerId: drift.Value(_selectedCustomer?.id),
         customerName:
             drift.Value(_selectedCustomer?.name ?? 'Cliente general'),
-        status: const drift.Value('paid'),
+        customerTaxId: drift.Value(_taxIdCtrl.text.isEmpty ? null : _taxIdCtrl.text),
+        status: drift.Value(status),
         subtotal: drift.Value(_subtotal),
         taxAmount: drift.Value(taxAmount),
         total: drift.Value(total),
@@ -370,6 +505,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
           productName: drift.Value(item.product.name as String),
           unitPrice: drift.Value(item.product.price as double),
           quantity: drift.Value(item.quantity),
+          taxAmount: drift.Value(item.itemTaxAmount),
           subtotal: drift.Value(item.subtotal),
         ));
         // Decrease stock
@@ -385,7 +521,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         data: {
           'invoiceNumber': invoiceNum,
           'customerName': _selectedCustomer?.name ?? 'Cliente general',
-          'status': 'paid',
+          'status': status,
           'subtotal': _subtotal,
           'taxAmount': taxAmount,
           'cardFee': feeAmount,
@@ -400,6 +536,15 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         context.pop();
         context.push('/invoices/$id');
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al emitir factura: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -408,6 +553,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   @override
   void dispose() {
     _notesCtrl.dispose();
+    _taxIdCtrl.dispose();
     super.dispose();
   }
 }

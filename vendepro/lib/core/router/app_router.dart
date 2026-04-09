@@ -10,6 +10,7 @@ import '../../features/invoices/invoice_detail_screen.dart';
 import '../../features/customers/customers_screen.dart';
 import '../../features/customers/customer_form_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/ncf_settings_screen.dart';
 import '../../features/platform_admin/platform_admin_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
@@ -150,6 +151,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SettingsScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'ncf',
+                builder: (context, state) => const NcfSettingsScreen(),
+              ),
+            ],
           ),
           // Hidden admin route - only accessible with secret tap sequence
           GoRoute(

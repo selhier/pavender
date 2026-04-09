@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
 import '../sync/sync_service.dart';
+import '../services/tax_service.dart';
 import 'auth_provider.dart';
 export 'auth_provider.dart';
 
@@ -114,3 +115,32 @@ final salesMonthProvider = FutureProvider.autoDispose((ref) {
 
 // Theme mode preference
 final themeModeProvider = StateProvider<bool>((ref) => true); // true = dark
+
+// Tax Service
+final taxServiceProvider = Provider<TaxService>((ref) => TaxService());
+
+// NCF Sequences
+final ncfSequencesProvider = StreamProvider.autoDispose((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  return db.ncfDao.watchAll(bId);
+});
+
+// Total Accounts Receivable
+final totalReceivableProvider = FutureProvider.autoDispose((ref) async {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  final invoices = await db.invoicesDao.getAll(bId);
+  return invoices
+      .where((inv) => inv.status == 'issued')
+      .fold<double>(0, (sum, inv) => sum + inv.total);
+});
+
+// Balance per customer
+final customerBalanceProvider = FutureProvider.family<double, String>((ref, customerId) async {
+  final db = ref.watch(databaseProvider);
+  final invoices = await db.invoicesDao.getByCustomer(customerId);
+  return invoices
+      .where((inv) => inv.status == 'issued')
+      .fold<double>(0, (sum, inv) => sum + inv.total);
+});

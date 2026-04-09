@@ -989,6 +989,14 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(5));
+  static const VerificationMeta _taxRateMeta =
+      const VerificationMeta('taxRate');
+  @override
+  late final GeneratedColumn<double> taxRate = GeneratedColumn<double>(
+      'tax_rate', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.18));
   static const VerificationMeta _unitMeta = const VerificationMeta('unit');
   @override
   late final GeneratedColumn<String> unit = GeneratedColumn<String>(
@@ -1051,6 +1059,7 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         cost,
         stock,
         minStock,
+        taxRate,
         unit,
         categoryId,
         imagePath,
@@ -1109,6 +1118,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     if (data.containsKey('min_stock')) {
       context.handle(_minStockMeta,
           minStock.isAcceptableOrUnknown(data['min_stock']!, _minStockMeta));
+    }
+    if (data.containsKey('tax_rate')) {
+      context.handle(_taxRateMeta,
+          taxRate.isAcceptableOrUnknown(data['tax_rate']!, _taxRateMeta));
     }
     if (data.containsKey('unit')) {
       context.handle(
@@ -1171,6 +1184,8 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
           .read(DriftSqlType.int, data['${effectivePrefix}stock'])!,
       minStock: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}min_stock'])!,
+      taxRate: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}tax_rate'])!,
       unit: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}unit'])!,
       categoryId: attachedDatabase.typeMapping
@@ -1204,6 +1219,7 @@ class Product extends DataClass implements Insertable<Product> {
   final double cost;
   final int stock;
   final int minStock;
+  final double taxRate;
   final String unit;
   final String? categoryId;
   final String? imagePath;
@@ -1221,6 +1237,7 @@ class Product extends DataClass implements Insertable<Product> {
       required this.cost,
       required this.stock,
       required this.minStock,
+      required this.taxRate,
       required this.unit,
       this.categoryId,
       this.imagePath,
@@ -1246,6 +1263,7 @@ class Product extends DataClass implements Insertable<Product> {
     map['cost'] = Variable<double>(cost);
     map['stock'] = Variable<int>(stock);
     map['min_stock'] = Variable<int>(minStock);
+    map['tax_rate'] = Variable<double>(taxRate);
     map['unit'] = Variable<String>(unit);
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
@@ -1275,6 +1293,7 @@ class Product extends DataClass implements Insertable<Product> {
       cost: Value(cost),
       stock: Value(stock),
       minStock: Value(minStock),
+      taxRate: Value(taxRate),
       unit: Value(unit),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
@@ -1302,6 +1321,7 @@ class Product extends DataClass implements Insertable<Product> {
       cost: serializer.fromJson<double>(json['cost']),
       stock: serializer.fromJson<int>(json['stock']),
       minStock: serializer.fromJson<int>(json['minStock']),
+      taxRate: serializer.fromJson<double>(json['taxRate']),
       unit: serializer.fromJson<String>(json['unit']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
@@ -1324,6 +1344,7 @@ class Product extends DataClass implements Insertable<Product> {
       'cost': serializer.toJson<double>(cost),
       'stock': serializer.toJson<int>(stock),
       'minStock': serializer.toJson<int>(minStock),
+      'taxRate': serializer.toJson<double>(taxRate),
       'unit': serializer.toJson<String>(unit),
       'categoryId': serializer.toJson<String?>(categoryId),
       'imagePath': serializer.toJson<String?>(imagePath),
@@ -1344,6 +1365,7 @@ class Product extends DataClass implements Insertable<Product> {
           double? cost,
           int? stock,
           int? minStock,
+          double? taxRate,
           String? unit,
           Value<String?> categoryId = const Value.absent(),
           Value<String?> imagePath = const Value.absent(),
@@ -1361,6 +1383,7 @@ class Product extends DataClass implements Insertable<Product> {
         cost: cost ?? this.cost,
         stock: stock ?? this.stock,
         minStock: minStock ?? this.minStock,
+        taxRate: taxRate ?? this.taxRate,
         unit: unit ?? this.unit,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         imagePath: imagePath.present ? imagePath.value : this.imagePath,
@@ -1381,6 +1404,7 @@ class Product extends DataClass implements Insertable<Product> {
       cost: data.cost.present ? data.cost.value : this.cost,
       stock: data.stock.present ? data.stock.value : this.stock,
       minStock: data.minStock.present ? data.minStock.value : this.minStock,
+      taxRate: data.taxRate.present ? data.taxRate.value : this.taxRate,
       unit: data.unit.present ? data.unit.value : this.unit,
       categoryId:
           data.categoryId.present ? data.categoryId.value : this.categoryId,
@@ -1405,6 +1429,7 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('cost: $cost, ')
           ..write('stock: $stock, ')
           ..write('minStock: $minStock, ')
+          ..write('taxRate: $taxRate, ')
           ..write('unit: $unit, ')
           ..write('categoryId: $categoryId, ')
           ..write('imagePath: $imagePath, ')
@@ -1427,6 +1452,7 @@ class Product extends DataClass implements Insertable<Product> {
       cost,
       stock,
       minStock,
+      taxRate,
       unit,
       categoryId,
       imagePath,
@@ -1447,6 +1473,7 @@ class Product extends DataClass implements Insertable<Product> {
           other.cost == this.cost &&
           other.stock == this.stock &&
           other.minStock == this.minStock &&
+          other.taxRate == this.taxRate &&
           other.unit == this.unit &&
           other.categoryId == this.categoryId &&
           other.imagePath == this.imagePath &&
@@ -1466,6 +1493,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<double> cost;
   final Value<int> stock;
   final Value<int> minStock;
+  final Value<double> taxRate;
   final Value<String> unit;
   final Value<String?> categoryId;
   final Value<String?> imagePath;
@@ -1484,6 +1512,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.cost = const Value.absent(),
     this.stock = const Value.absent(),
     this.minStock = const Value.absent(),
+    this.taxRate = const Value.absent(),
     this.unit = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.imagePath = const Value.absent(),
@@ -1503,6 +1532,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.cost = const Value.absent(),
     this.stock = const Value.absent(),
     this.minStock = const Value.absent(),
+    this.taxRate = const Value.absent(),
     this.unit = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.imagePath = const Value.absent(),
@@ -1524,6 +1554,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<double>? cost,
     Expression<int>? stock,
     Expression<int>? minStock,
+    Expression<double>? taxRate,
     Expression<String>? unit,
     Expression<String>? categoryId,
     Expression<String>? imagePath,
@@ -1543,6 +1574,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (cost != null) 'cost': cost,
       if (stock != null) 'stock': stock,
       if (minStock != null) 'min_stock': minStock,
+      if (taxRate != null) 'tax_rate': taxRate,
       if (unit != null) 'unit': unit,
       if (categoryId != null) 'category_id': categoryId,
       if (imagePath != null) 'image_path': imagePath,
@@ -1564,6 +1596,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       Value<double>? cost,
       Value<int>? stock,
       Value<int>? minStock,
+      Value<double>? taxRate,
       Value<String>? unit,
       Value<String?>? categoryId,
       Value<String?>? imagePath,
@@ -1582,6 +1615,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       cost: cost ?? this.cost,
       stock: stock ?? this.stock,
       minStock: minStock ?? this.minStock,
+      taxRate: taxRate ?? this.taxRate,
       unit: unit ?? this.unit,
       categoryId: categoryId ?? this.categoryId,
       imagePath: imagePath ?? this.imagePath,
@@ -1623,6 +1657,9 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (minStock.present) {
       map['min_stock'] = Variable<int>(minStock.value);
     }
+    if (taxRate.present) {
+      map['tax_rate'] = Variable<double>(taxRate.value);
+    }
     if (unit.present) {
       map['unit'] = Variable<String>(unit.value);
     }
@@ -1662,6 +1699,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('cost: $cost, ')
           ..write('stock: $stock, ')
           ..write('minStock: $minStock, ')
+          ..write('taxRate: $taxRate, ')
           ..write('unit: $unit, ')
           ..write('categoryId: $categoryId, ')
           ..write('imagePath: $imagePath, ')
@@ -2230,6 +2268,12 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
   late final GeneratedColumn<String> ncfType = GeneratedColumn<String>(
       'ncf_type', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _customerTaxIdMeta =
+      const VerificationMeta('customerTaxId');
+  @override
+  late final GeneratedColumn<String> customerTaxId = GeneratedColumn<String>(
+      'customer_tax_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _businessIdMeta =
       const VerificationMeta('businessId');
   @override
@@ -2284,6 +2328,7 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
         paymentMethod,
         ncf,
         ncfType,
+        customerTaxId,
         businessId,
         synced,
         issuedAt,
@@ -2365,6 +2410,12 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
       context.handle(_ncfTypeMeta,
           ncfType.isAcceptableOrUnknown(data['ncf_type']!, _ncfTypeMeta));
     }
+    if (data.containsKey('customer_tax_id')) {
+      context.handle(
+          _customerTaxIdMeta,
+          customerTaxId.isAcceptableOrUnknown(
+              data['customer_tax_id']!, _customerTaxIdMeta));
+    }
     if (data.containsKey('business_id')) {
       context.handle(
           _businessIdMeta,
@@ -2424,6 +2475,8 @@ class $InvoicesTable extends Invoices with TableInfo<$InvoicesTable, Invoice> {
           .read(DriftSqlType.string, data['${effectivePrefix}ncf']),
       ncfType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ncf_type']),
+      customerTaxId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}customer_tax_id']),
       businessId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}business_id'])!,
       synced: attachedDatabase.typeMapping
@@ -2457,6 +2510,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
   final String paymentMethod;
   final String? ncf;
   final String? ncfType;
+  final String? customerTaxId;
   final String businessId;
   final bool synced;
   final DateTime issuedAt;
@@ -2476,6 +2530,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       required this.paymentMethod,
       this.ncf,
       this.ncfType,
+      this.customerTaxId,
       required this.businessId,
       required this.synced,
       required this.issuedAt,
@@ -2507,6 +2562,9 @@ class Invoice extends DataClass implements Insertable<Invoice> {
     if (!nullToAbsent || ncfType != null) {
       map['ncf_type'] = Variable<String>(ncfType);
     }
+    if (!nullToAbsent || customerTaxId != null) {
+      map['customer_tax_id'] = Variable<String>(customerTaxId);
+    }
     map['business_id'] = Variable<String>(businessId);
     map['synced'] = Variable<bool>(synced);
     map['issued_at'] = Variable<DateTime>(issuedAt);
@@ -2537,6 +2595,9 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       ncfType: ncfType == null && nullToAbsent
           ? const Value.absent()
           : Value(ncfType),
+      customerTaxId: customerTaxId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerTaxId),
       businessId: Value(businessId),
       synced: Value(synced),
       issuedAt: Value(issuedAt),
@@ -2562,6 +2623,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       ncf: serializer.fromJson<String?>(json['ncf']),
       ncfType: serializer.fromJson<String?>(json['ncfType']),
+      customerTaxId: serializer.fromJson<String?>(json['customerTaxId']),
       businessId: serializer.fromJson<String>(json['businessId']),
       synced: serializer.fromJson<bool>(json['synced']),
       issuedAt: serializer.fromJson<DateTime>(json['issuedAt']),
@@ -2586,6 +2648,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'ncf': serializer.toJson<String?>(ncf),
       'ncfType': serializer.toJson<String?>(ncfType),
+      'customerTaxId': serializer.toJson<String?>(customerTaxId),
       'businessId': serializer.toJson<String>(businessId),
       'synced': serializer.toJson<bool>(synced),
       'issuedAt': serializer.toJson<DateTime>(issuedAt),
@@ -2608,6 +2671,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           String? paymentMethod,
           Value<String?> ncf = const Value.absent(),
           Value<String?> ncfType = const Value.absent(),
+          Value<String?> customerTaxId = const Value.absent(),
           String? businessId,
           bool? synced,
           DateTime? issuedAt,
@@ -2628,6 +2692,8 @@ class Invoice extends DataClass implements Insertable<Invoice> {
         paymentMethod: paymentMethod ?? this.paymentMethod,
         ncf: ncf.present ? ncf.value : this.ncf,
         ncfType: ncfType.present ? ncfType.value : this.ncfType,
+        customerTaxId:
+            customerTaxId.present ? customerTaxId.value : this.customerTaxId,
         businessId: businessId ?? this.businessId,
         synced: synced ?? this.synced,
         issuedAt: issuedAt ?? this.issuedAt,
@@ -2658,6 +2724,9 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           : this.paymentMethod,
       ncf: data.ncf.present ? data.ncf.value : this.ncf,
       ncfType: data.ncfType.present ? data.ncfType.value : this.ncfType,
+      customerTaxId: data.customerTaxId.present
+          ? data.customerTaxId.value
+          : this.customerTaxId,
       businessId:
           data.businessId.present ? data.businessId.value : this.businessId,
       synced: data.synced.present ? data.synced.value : this.synced,
@@ -2683,6 +2752,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('ncf: $ncf, ')
           ..write('ncfType: $ncfType, ')
+          ..write('customerTaxId: $customerTaxId, ')
           ..write('businessId: $businessId, ')
           ..write('synced: $synced, ')
           ..write('issuedAt: $issuedAt, ')
@@ -2707,6 +2777,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
       paymentMethod,
       ncf,
       ncfType,
+      customerTaxId,
       businessId,
       synced,
       issuedAt,
@@ -2729,6 +2800,7 @@ class Invoice extends DataClass implements Insertable<Invoice> {
           other.paymentMethod == this.paymentMethod &&
           other.ncf == this.ncf &&
           other.ncfType == this.ncfType &&
+          other.customerTaxId == this.customerTaxId &&
           other.businessId == this.businessId &&
           other.synced == this.synced &&
           other.issuedAt == this.issuedAt &&
@@ -2750,6 +2822,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
   final Value<String> paymentMethod;
   final Value<String?> ncf;
   final Value<String?> ncfType;
+  final Value<String?> customerTaxId;
   final Value<String> businessId;
   final Value<bool> synced;
   final Value<DateTime> issuedAt;
@@ -2770,6 +2843,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     this.paymentMethod = const Value.absent(),
     this.ncf = const Value.absent(),
     this.ncfType = const Value.absent(),
+    this.customerTaxId = const Value.absent(),
     this.businessId = const Value.absent(),
     this.synced = const Value.absent(),
     this.issuedAt = const Value.absent(),
@@ -2791,6 +2865,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     this.paymentMethod = const Value.absent(),
     this.ncf = const Value.absent(),
     this.ncfType = const Value.absent(),
+    this.customerTaxId = const Value.absent(),
     required String businessId,
     this.synced = const Value.absent(),
     this.issuedAt = const Value.absent(),
@@ -2814,6 +2889,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     Expression<String>? paymentMethod,
     Expression<String>? ncf,
     Expression<String>? ncfType,
+    Expression<String>? customerTaxId,
     Expression<String>? businessId,
     Expression<bool>? synced,
     Expression<DateTime>? issuedAt,
@@ -2835,6 +2911,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (ncf != null) 'ncf': ncf,
       if (ncfType != null) 'ncf_type': ncfType,
+      if (customerTaxId != null) 'customer_tax_id': customerTaxId,
       if (businessId != null) 'business_id': businessId,
       if (synced != null) 'synced': synced,
       if (issuedAt != null) 'issued_at': issuedAt,
@@ -2858,6 +2935,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       Value<String>? paymentMethod,
       Value<String?>? ncf,
       Value<String?>? ncfType,
+      Value<String?>? customerTaxId,
       Value<String>? businessId,
       Value<bool>? synced,
       Value<DateTime>? issuedAt,
@@ -2878,6 +2956,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       ncf: ncf ?? this.ncf,
       ncfType: ncfType ?? this.ncfType,
+      customerTaxId: customerTaxId ?? this.customerTaxId,
       businessId: businessId ?? this.businessId,
       synced: synced ?? this.synced,
       issuedAt: issuedAt ?? this.issuedAt,
@@ -2929,6 +3008,9 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
     if (ncfType.present) {
       map['ncf_type'] = Variable<String>(ncfType.value);
     }
+    if (customerTaxId.present) {
+      map['customer_tax_id'] = Variable<String>(customerTaxId.value);
+    }
     if (businessId.present) {
       map['business_id'] = Variable<String>(businessId.value);
     }
@@ -2966,6 +3048,7 @@ class InvoicesCompanion extends UpdateCompanion<Invoice> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('ncf: $ncf, ')
           ..write('ncfType: $ncfType, ')
+          ..write('customerTaxId: $customerTaxId, ')
           ..write('businessId: $businessId, ')
           ..write('synced: $synced, ')
           ..write('issuedAt: $issuedAt, ')
@@ -3028,6 +3111,14 @@ class $InvoiceItemsTable extends InvoiceItems
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
+  static const VerificationMeta _taxAmountMeta =
+      const VerificationMeta('taxAmount');
+  @override
+  late final GeneratedColumn<double> taxAmount = GeneratedColumn<double>(
+      'tax_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
   static const VerificationMeta _subtotalMeta =
       const VerificationMeta('subtotal');
   @override
@@ -3043,6 +3134,7 @@ class $InvoiceItemsTable extends InvoiceItems
         unitPrice,
         quantity,
         discount,
+        taxAmount,
         subtotal
       ];
   @override
@@ -3094,6 +3186,10 @@ class $InvoiceItemsTable extends InvoiceItems
       context.handle(_discountMeta,
           discount.isAcceptableOrUnknown(data['discount']!, _discountMeta));
     }
+    if (data.containsKey('tax_amount')) {
+      context.handle(_taxAmountMeta,
+          taxAmount.isAcceptableOrUnknown(data['tax_amount']!, _taxAmountMeta));
+    }
     if (data.containsKey('subtotal')) {
       context.handle(_subtotalMeta,
           subtotal.isAcceptableOrUnknown(data['subtotal']!, _subtotalMeta));
@@ -3123,6 +3219,8 @@ class $InvoiceItemsTable extends InvoiceItems
           .read(DriftSqlType.int, data['${effectivePrefix}quantity'])!,
       discount: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}discount'])!,
+      taxAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}tax_amount'])!,
       subtotal: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}subtotal'])!,
     );
@@ -3142,6 +3240,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
   final double unitPrice;
   final int quantity;
   final double discount;
+  final double taxAmount;
   final double subtotal;
   const InvoiceItem(
       {required this.id,
@@ -3151,6 +3250,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       required this.unitPrice,
       required this.quantity,
       required this.discount,
+      required this.taxAmount,
       required this.subtotal});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3162,6 +3262,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
     map['unit_price'] = Variable<double>(unitPrice);
     map['quantity'] = Variable<int>(quantity);
     map['discount'] = Variable<double>(discount);
+    map['tax_amount'] = Variable<double>(taxAmount);
     map['subtotal'] = Variable<double>(subtotal);
     return map;
   }
@@ -3175,6 +3276,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       unitPrice: Value(unitPrice),
       quantity: Value(quantity),
       discount: Value(discount),
+      taxAmount: Value(taxAmount),
       subtotal: Value(subtotal),
     );
   }
@@ -3190,6 +3292,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
       quantity: serializer.fromJson<int>(json['quantity']),
       discount: serializer.fromJson<double>(json['discount']),
+      taxAmount: serializer.fromJson<double>(json['taxAmount']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
     );
   }
@@ -3204,6 +3307,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       'unitPrice': serializer.toJson<double>(unitPrice),
       'quantity': serializer.toJson<int>(quantity),
       'discount': serializer.toJson<double>(discount),
+      'taxAmount': serializer.toJson<double>(taxAmount),
       'subtotal': serializer.toJson<double>(subtotal),
     };
   }
@@ -3216,6 +3320,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           double? unitPrice,
           int? quantity,
           double? discount,
+          double? taxAmount,
           double? subtotal}) =>
       InvoiceItem(
         id: id ?? this.id,
@@ -3225,6 +3330,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
         unitPrice: unitPrice ?? this.unitPrice,
         quantity: quantity ?? this.quantity,
         discount: discount ?? this.discount,
+        taxAmount: taxAmount ?? this.taxAmount,
         subtotal: subtotal ?? this.subtotal,
       );
   InvoiceItem copyWithCompanion(InvoiceItemsCompanion data) {
@@ -3237,6 +3343,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       discount: data.discount.present ? data.discount.value : this.discount,
+      taxAmount: data.taxAmount.present ? data.taxAmount.value : this.taxAmount,
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
     );
   }
@@ -3251,6 +3358,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           ..write('unitPrice: $unitPrice, ')
           ..write('quantity: $quantity, ')
           ..write('discount: $discount, ')
+          ..write('taxAmount: $taxAmount, ')
           ..write('subtotal: $subtotal')
           ..write(')'))
         .toString();
@@ -3258,7 +3366,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
 
   @override
   int get hashCode => Object.hash(id, invoiceId, productId, productName,
-      unitPrice, quantity, discount, subtotal);
+      unitPrice, quantity, discount, taxAmount, subtotal);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3270,6 +3378,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           other.unitPrice == this.unitPrice &&
           other.quantity == this.quantity &&
           other.discount == this.discount &&
+          other.taxAmount == this.taxAmount &&
           other.subtotal == this.subtotal);
 }
 
@@ -3281,6 +3390,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
   final Value<double> unitPrice;
   final Value<int> quantity;
   final Value<double> discount;
+  final Value<double> taxAmount;
   final Value<double> subtotal;
   final Value<int> rowid;
   const InvoiceItemsCompanion({
@@ -3291,6 +3401,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     this.unitPrice = const Value.absent(),
     this.quantity = const Value.absent(),
     this.discount = const Value.absent(),
+    this.taxAmount = const Value.absent(),
     this.subtotal = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3302,6 +3413,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     required double unitPrice,
     this.quantity = const Value.absent(),
     this.discount = const Value.absent(),
+    this.taxAmount = const Value.absent(),
     required double subtotal,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -3318,6 +3430,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     Expression<double>? unitPrice,
     Expression<int>? quantity,
     Expression<double>? discount,
+    Expression<double>? taxAmount,
     Expression<double>? subtotal,
     Expression<int>? rowid,
   }) {
@@ -3329,6 +3442,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       if (unitPrice != null) 'unit_price': unitPrice,
       if (quantity != null) 'quantity': quantity,
       if (discount != null) 'discount': discount,
+      if (taxAmount != null) 'tax_amount': taxAmount,
       if (subtotal != null) 'subtotal': subtotal,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3342,6 +3456,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       Value<double>? unitPrice,
       Value<int>? quantity,
       Value<double>? discount,
+      Value<double>? taxAmount,
       Value<double>? subtotal,
       Value<int>? rowid}) {
     return InvoiceItemsCompanion(
@@ -3352,6 +3467,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       unitPrice: unitPrice ?? this.unitPrice,
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
+      taxAmount: taxAmount ?? this.taxAmount,
       subtotal: subtotal ?? this.subtotal,
       rowid: rowid ?? this.rowid,
     );
@@ -3381,6 +3497,9 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     if (discount.present) {
       map['discount'] = Variable<double>(discount.value);
     }
+    if (taxAmount.present) {
+      map['tax_amount'] = Variable<double>(taxAmount.value);
+    }
     if (subtotal.present) {
       map['subtotal'] = Variable<double>(subtotal.value);
     }
@@ -3400,6 +3519,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
           ..write('unitPrice: $unitPrice, ')
           ..write('quantity: $quantity, ')
           ..write('discount: $discount, ')
+          ..write('taxAmount: $taxAmount, ')
           ..write('subtotal: $subtotal, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5445,6 +5565,7 @@ typedef $$ProductsTableCreateCompanionBuilder = ProductsCompanion Function({
   Value<double> cost,
   Value<int> stock,
   Value<int> minStock,
+  Value<double> taxRate,
   Value<String> unit,
   Value<String?> categoryId,
   Value<String?> imagePath,
@@ -5464,6 +5585,7 @@ typedef $$ProductsTableUpdateCompanionBuilder = ProductsCompanion Function({
   Value<double> cost,
   Value<int> stock,
   Value<int> minStock,
+  Value<double> taxRate,
   Value<String> unit,
   Value<String?> categoryId,
   Value<String?> imagePath,
@@ -5509,6 +5631,9 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<int> get minStock => $composableBuilder(
       column: $table.minStock, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get taxRate => $composableBuilder(
+      column: $table.taxRate, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get unit => $composableBuilder(
       column: $table.unit, builder: (column) => ColumnFilters(column));
@@ -5568,6 +5693,9 @@ class $$ProductsTableOrderingComposer
   ColumnOrderings<int> get minStock => $composableBuilder(
       column: $table.minStock, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get taxRate => $composableBuilder(
+      column: $table.taxRate, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get unit => $composableBuilder(
       column: $table.unit, builder: (column) => ColumnOrderings(column));
 
@@ -5626,6 +5754,9 @@ class $$ProductsTableAnnotationComposer
   GeneratedColumn<int> get minStock =>
       $composableBuilder(column: $table.minStock, builder: (column) => column);
 
+  GeneratedColumn<double> get taxRate =>
+      $composableBuilder(column: $table.taxRate, builder: (column) => column);
+
   GeneratedColumn<String> get unit =>
       $composableBuilder(column: $table.unit, builder: (column) => column);
 
@@ -5680,6 +5811,7 @@ class $$ProductsTableTableManager extends RootTableManager<
             Value<double> cost = const Value.absent(),
             Value<int> stock = const Value.absent(),
             Value<int> minStock = const Value.absent(),
+            Value<double> taxRate = const Value.absent(),
             Value<String> unit = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
@@ -5699,6 +5831,7 @@ class $$ProductsTableTableManager extends RootTableManager<
             cost: cost,
             stock: stock,
             minStock: minStock,
+            taxRate: taxRate,
             unit: unit,
             categoryId: categoryId,
             imagePath: imagePath,
@@ -5718,6 +5851,7 @@ class $$ProductsTableTableManager extends RootTableManager<
             Value<double> cost = const Value.absent(),
             Value<int> stock = const Value.absent(),
             Value<int> minStock = const Value.absent(),
+            Value<double> taxRate = const Value.absent(),
             Value<String> unit = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
@@ -5737,6 +5871,7 @@ class $$ProductsTableTableManager extends RootTableManager<
             cost: cost,
             stock: stock,
             minStock: minStock,
+            taxRate: taxRate,
             unit: unit,
             categoryId: categoryId,
             imagePath: imagePath,
@@ -6004,6 +6139,7 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<String> paymentMethod,
   Value<String?> ncf,
   Value<String?> ncfType,
+  Value<String?> customerTaxId,
   required String businessId,
   Value<bool> synced,
   Value<DateTime> issuedAt,
@@ -6025,6 +6161,7 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<String> paymentMethod,
   Value<String?> ncf,
   Value<String?> ncfType,
+  Value<String?> customerTaxId,
   Value<String> businessId,
   Value<bool> synced,
   Value<DateTime> issuedAt,
@@ -6081,6 +6218,9 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<String> get ncfType => $composableBuilder(
       column: $table.ncfType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get customerTaxId => $composableBuilder(
+      column: $table.customerTaxId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => ColumnFilters(column));
@@ -6150,6 +6290,10 @@ class $$InvoicesTableOrderingComposer
   ColumnOrderings<String> get ncfType => $composableBuilder(
       column: $table.ncfType, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get customerTaxId => $composableBuilder(
+      column: $table.customerTaxId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => ColumnOrderings(column));
 
@@ -6214,6 +6358,9 @@ class $$InvoicesTableAnnotationComposer
   GeneratedColumn<String> get ncfType =>
       $composableBuilder(column: $table.ncfType, builder: (column) => column);
 
+  GeneratedColumn<String> get customerTaxId => $composableBuilder(
+      column: $table.customerTaxId, builder: (column) => column);
+
   GeneratedColumn<String> get businessId => $composableBuilder(
       column: $table.businessId, builder: (column) => column);
 
@@ -6266,6 +6413,7 @@ class $$InvoicesTableTableManager extends RootTableManager<
             Value<String> paymentMethod = const Value.absent(),
             Value<String?> ncf = const Value.absent(),
             Value<String?> ncfType = const Value.absent(),
+            Value<String?> customerTaxId = const Value.absent(),
             Value<String> businessId = const Value.absent(),
             Value<bool> synced = const Value.absent(),
             Value<DateTime> issuedAt = const Value.absent(),
@@ -6287,6 +6435,7 @@ class $$InvoicesTableTableManager extends RootTableManager<
             paymentMethod: paymentMethod,
             ncf: ncf,
             ncfType: ncfType,
+            customerTaxId: customerTaxId,
             businessId: businessId,
             synced: synced,
             issuedAt: issuedAt,
@@ -6308,6 +6457,7 @@ class $$InvoicesTableTableManager extends RootTableManager<
             Value<String> paymentMethod = const Value.absent(),
             Value<String?> ncf = const Value.absent(),
             Value<String?> ncfType = const Value.absent(),
+            Value<String?> customerTaxId = const Value.absent(),
             required String businessId,
             Value<bool> synced = const Value.absent(),
             Value<DateTime> issuedAt = const Value.absent(),
@@ -6329,6 +6479,7 @@ class $$InvoicesTableTableManager extends RootTableManager<
             paymentMethod: paymentMethod,
             ncf: ncf,
             ncfType: ncfType,
+            customerTaxId: customerTaxId,
             businessId: businessId,
             synced: synced,
             issuedAt: issuedAt,
@@ -6364,6 +6515,7 @@ typedef $$InvoiceItemsTableCreateCompanionBuilder = InvoiceItemsCompanion
   required double unitPrice,
   Value<int> quantity,
   Value<double> discount,
+  Value<double> taxAmount,
   required double subtotal,
   Value<int> rowid,
 });
@@ -6376,6 +6528,7 @@ typedef $$InvoiceItemsTableUpdateCompanionBuilder = InvoiceItemsCompanion
   Value<double> unitPrice,
   Value<int> quantity,
   Value<double> discount,
+  Value<double> taxAmount,
   Value<double> subtotal,
   Value<int> rowid,
 });
@@ -6409,6 +6562,9 @@ class $$InvoiceItemsTableFilterComposer
 
   ColumnFilters<double> get discount => $composableBuilder(
       column: $table.discount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get taxAmount => $composableBuilder(
+      column: $table.taxAmount, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get subtotal => $composableBuilder(
       column: $table.subtotal, builder: (column) => ColumnFilters(column));
@@ -6444,6 +6600,9 @@ class $$InvoiceItemsTableOrderingComposer
   ColumnOrderings<double> get discount => $composableBuilder(
       column: $table.discount, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get taxAmount => $composableBuilder(
+      column: $table.taxAmount, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get subtotal => $composableBuilder(
       column: $table.subtotal, builder: (column) => ColumnOrderings(column));
 }
@@ -6477,6 +6636,9 @@ class $$InvoiceItemsTableAnnotationComposer
 
   GeneratedColumn<double> get discount =>
       $composableBuilder(column: $table.discount, builder: (column) => column);
+
+  GeneratedColumn<double> get taxAmount =>
+      $composableBuilder(column: $table.taxAmount, builder: (column) => column);
 
   GeneratedColumn<double> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
@@ -6515,6 +6677,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             Value<double> unitPrice = const Value.absent(),
             Value<int> quantity = const Value.absent(),
             Value<double> discount = const Value.absent(),
+            Value<double> taxAmount = const Value.absent(),
             Value<double> subtotal = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6526,6 +6689,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             unitPrice: unitPrice,
             quantity: quantity,
             discount: discount,
+            taxAmount: taxAmount,
             subtotal: subtotal,
             rowid: rowid,
           ),
@@ -6537,6 +6701,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             required double unitPrice,
             Value<int> quantity = const Value.absent(),
             Value<double> discount = const Value.absent(),
+            Value<double> taxAmount = const Value.absent(),
             required double subtotal,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6548,6 +6713,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             unitPrice: unitPrice,
             quantity: quantity,
             discount: discount,
+            taxAmount: taxAmount,
             subtotal: subtotal,
             rowid: rowid,
           ),

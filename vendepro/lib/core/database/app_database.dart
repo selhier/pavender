@@ -33,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +68,15 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(invoices, invoices.ncf);
             await m.addColumn(invoices, invoices.ncfType);
             await m.createTable(ncfSequences);
+          }
+          if (from < 4) {
+            // Add customer tax ID column for invoices
+            await m.addColumn(invoices, invoices.customerTaxId);
+          }
+          if (from < 5) {
+            // Add taxRate to products and taxAmount to invoiceItems
+            await m.addColumn(products, products.taxRate);
+            await m.addColumn(invoiceItems, invoiceItems.taxAmount);
           }
         },
       );

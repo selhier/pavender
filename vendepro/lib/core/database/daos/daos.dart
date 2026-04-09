@@ -103,6 +103,25 @@ class InvoicesDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
           .get();
 
+  Future<List<Invoice>> getAll(String businessId) =>
+      (select(invoices)
+            ..where((i) => i.businessId.equals(businessId))
+            ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+          .get();
+
+  Future<List<Invoice>> getByCustomer(String customerId) =>
+      (select(invoices)
+            ..where((i) => i.customerId.equals(customerId))
+            ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+          .get();
+
+  Future<List<Invoice>> getByDateRange(String businessId, DateTime start, DateTime end) =>
+      (select(invoices)
+            ..where((i) => i.businessId.equals(businessId))
+            ..where((i) => i.createdAt.isBetweenValues(start, end))
+            ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+          .get();
+
   Future<void> markSynced(String id) =>
       (update(invoices)..where((i) => i.id.equals(id)))
           .write(const InvoicesCompanion(synced: Value(true)));

@@ -44,6 +44,7 @@ class Products extends Table {
   RealColumn get cost => real().withDefault(const Constant(0.0))();
   IntColumn get stock => integer().withDefault(const Constant(0))();
   IntColumn get minStock => integer().withDefault(const Constant(5))();
+  RealColumn get taxRate => real().withDefault(const Constant(0.18))();
   TextColumn get unit => text().withDefault(const Constant('unidad'))();
   TextColumn get categoryId => text().nullable()();
   TextColumn get imagePath => text().nullable()();
@@ -89,6 +90,7 @@ class Invoices extends Table {
   // DR Localization
   TextColumn get ncf => text().nullable()();
   TextColumn get ncfType => text().nullable()();
+  TextColumn get customerTaxId => text().nullable()();
   
   TextColumn get businessId => text()();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
@@ -109,6 +111,7 @@ class InvoiceItems extends Table {
   RealColumn get unitPrice => real()();
   IntColumn get quantity => integer().withDefault(const Constant(1))();
   RealColumn get discount => real().withDefault(const Constant(0.0))();
+  RealColumn get taxAmount => real().withDefault(const Constant(0.0))();
   RealColumn get subtotal => real()();
 
   @override

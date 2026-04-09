@@ -190,11 +190,16 @@ class _InvoiceCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          invoice.customerName ?? 'Cliente general',
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            invoice.customerName ?? 'Cliente general',
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         StatusBadge(status: invoice.status),
                       ],
                     ),

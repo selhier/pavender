@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -170,167 +171,181 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
-      body: LoadingOverlay(
-        isLoading: _isLoading,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // Business logo area (secret admin trigger - 7 taps)
-            Center(
-              child: Stack(
-                children: [
-                  GestureDetector(
-                    onTap: _pickLogo,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 2),
-                        image: _logoBase64 != null
-                            ? DecorationImage(
-                                image: MemoryImage(base64Decode(_logoBase64!)),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: LoadingOverlay(
+            isLoading: _isLoading,
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                // Business logo area (secret admin trigger - 7 taps)
+                Center(
+                  child: Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickLogo,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.primary, width: 2),
+                            image: _logoBase64 != null
+                                ? DecorationImage(
+                                    image: MemoryImage(base64Decode(_logoBase64!)),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: _logoBase64 == null
+                              ? const Icon(Icons.storefront_rounded,
+                                  color: AppColors.primary, size: 48)
+                              : null,
+                        ),
                       ),
-                      child: _logoBase64 == null
-                          ? const Icon(Icons.storefront_rounded,
-                              color: AppColors.primary, size: 48)
-                          : null,
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: CircleAvatar(
+                          backgroundColor: AppColors.primary,
+                          radius: 16,
+                          child: IconButton(
+                            icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                            color: Colors.white,
+                            onPressed: _pickLogo,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Center(
+                  child: Text(
+                    'Logo de la empresa',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 28),
+    
+                // Business info section
+                _SectionCard(
+                  title: 'Información del Negocio',
+                  children: [
+                    _field('Nombre del negocio', _nameCtrl,
+                        icon: Icons.storefront_rounded),
+                    const SizedBox(height: 12),
+                    _field('Dirección', _addressCtrl,
+                        icon: Icons.location_on_outlined, maxLines: 2),
+                    const SizedBox(height: 12),
+                    _field('Teléfono', _phoneCtrl,
+                        icon: Icons.phone_outlined,
+                        type: TextInputType.phone),
+                    const SizedBox(height: 12),
+                    _field('Email', _emailCtrl,
+                        icon: Icons.email_outlined,
+                        type: TextInputType.emailAddress),
+                  ],
+                ),
+                const SizedBox(height: 16),
+    
+                // Fiscal section
+                _SectionCard(
+                  title: 'Configuración Fiscal',
+                  children: [
+                    _field('Tasa de impuesto (%)', _taxCtrl,
+                        icon: Icons.percent_rounded,
+                        type: TextInputType.number),
+                    const SizedBox(height: 12),
+                    _field('Comisión de Tarjeta (%)', _cardFeeCtrl,
+                        icon: Icons.credit_card_rounded,
+                        type: TextInputType.number),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _currency,
+                      decoration: const InputDecoration(
+                        labelText: 'Moneda',
+                        prefixIcon: Icon(Icons.attach_money_rounded),
+                      ),
+                      items: [
+                        'USD', 'EUR', 'MXN', 'COP', 'ARS', 'PEN', 'BOB',
+                        'CLP', 'VES', 'CRC', 'GTQ', 'DOP'
+                      ]
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => setState(() {
+                        _currency = v!;
+                        _currencySymbol = _getCurrencySymbol(v);
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.receipt_long_rounded, color: AppColors.primary),
+                      title: const Text('Gestionar Secuencias NCF'),
+                      subtitle: const Text('Configurar rangos de comprobantes'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () => context.push('/settings/ncf'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+    
+                // Preferences
+                _SectionCard(
+                  title: 'Preferencias',
+                  children: [
+                    SwitchListTile(
+                      title: const Text('Modo Oscuro'),
+                      subtitle: const Text('Interfaz oscura'),
+                      value: isDark,
+                      activeColor: AppColors.primary,
+                      onChanged: (v) =>
+                          ref.read(themeModeProvider.notifier).state = v,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+    
+                SizedBox(
+                  height: 52,
+                  child: GradientButton(
+                    label: 'Guardar Configuración',
+                    icon: Icons.save_rounded,
+                    onTap: _save,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 52,
+                  child: GradientButton(
+                    label: 'Cerrar Sesión',
+                    icon: Icons.logout_rounded,
+                    gradient: const LinearGradient(colors: [AppColors.error, Color.fromARGB(255, 235, 114, 114)]),
+                    onTap: () async {
+                      await ref.read(authControllerProvider.notifier).signOut();
+                      // The router will handle redirection to /login
+                    },
+                  ),
+                ),
+                const SizedBox(height: 32),
+    
+                // App version
+                GestureDetector(
+                  onTap: _onAdminTap,
+                  child: const Center(
+                    child: Text(
+                      'VendePro v1.0.0\n© 2025 VendePro Platform',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.primary,
-                      radius: 16,
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                        color: Colors.white,
-                        onPressed: _pickLogo,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Center(
-              child: Text(
-                'Logo de la empresa',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Business info section
-            _SectionCard(
-              title: 'Información del Negocio',
-              children: [
-                _field('Nombre del negocio', _nameCtrl,
-                    icon: Icons.storefront_rounded),
-                const SizedBox(height: 12),
-                _field('Dirección', _addressCtrl,
-                    icon: Icons.location_on_outlined, maxLines: 2),
-                const SizedBox(height: 12),
-                _field('Teléfono', _phoneCtrl,
-                    icon: Icons.phone_outlined,
-                    type: TextInputType.phone),
-                const SizedBox(height: 12),
-                _field('Email', _emailCtrl,
-                    icon: Icons.email_outlined,
-                    type: TextInputType.emailAddress),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Fiscal section
-            _SectionCard(
-              title: 'Configuración Fiscal',
-              children: [
-                _field('Tasa de impuesto (%)', _taxCtrl,
-                    icon: Icons.percent_rounded,
-                    type: TextInputType.number),
-                const SizedBox(height: 12),
-                _field('Comisión de Tarjeta (%)', _cardFeeCtrl,
-                    icon: Icons.credit_card_rounded,
-                    type: TextInputType.number),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _currency,
-                  decoration: const InputDecoration(
-                    labelText: 'Moneda',
-                    prefixIcon: Icon(Icons.attach_money_rounded),
-                  ),
-                  items: [
-                    'USD', 'EUR', 'MXN', 'COP', 'ARS', 'PEN', 'BOB',
-                    'CLP', 'VES', 'CRC', 'GTQ', 'DOP'
-                  ]
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (v) => setState(() {
-                    _currency = v!;
-                    _currencySymbol = _getCurrencySymbol(v);
-                  }),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Preferences
-            _SectionCard(
-              title: 'Preferencias',
-              children: [
-                SwitchListTile(
-                  title: const Text('Modo Oscuro'),
-                  subtitle: const Text('Interfaz oscura'),
-                  value: isDark,
-                  activeColor: AppColors.primary,
-                  onChanged: (v) =>
-                      ref.read(themeModeProvider.notifier).state = v,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            SizedBox(
-              height: 52,
-              child: GradientButton(
-                label: 'Guardar Configuración',
-                icon: Icons.save_rounded,
-                onTap: _save,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 52,
-              child: GradientButton(
-                label: 'Cerrar Sesión',
-                icon: Icons.logout_rounded,
-                gradient: const LinearGradient(colors: [AppColors.error, Color.fromARGB(255, 235, 114, 114)]),
-                onTap: () async {
-                  await ref.read(authControllerProvider.notifier).signOut();
-                  // The router will handle redirection to /login
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // App version
-            GestureDetector(
-              onTap: _onAdminTap,
-              child: const Center(
-                child: Text(
-                  'VendePro v1.0.0\n© 2025 VendePro Platform',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

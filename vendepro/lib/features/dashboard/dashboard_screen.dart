@@ -20,6 +20,8 @@ class DashboardScreen extends ConsumerWidget {
     final salesMonth = ref.watch(salesMonthProvider);
     final invoices = ref.watch(invoicesStreamProvider);
     final lowStock = ref.watch(lowStockProvider);
+    final ncfSequences = ref.watch(ncfSequencesProvider);
+    final totalReceivable = ref.watch(totalReceivableProvider);
 
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
@@ -108,6 +110,7 @@ class DashboardScreen extends ConsumerWidget {
                 _KpiRow(
                   salesToday: salesToday.value ?? 0.0,
                   salesMonth: salesMonth.value ?? 0.0,
+                  receivable: totalReceivable.value ?? 0.0,
                   invoices: invoices.value ?? [],
                   currencyFmt: currencyFmt,
                 ),
@@ -153,6 +156,11 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   _LowStockAlert(products: lowStock.value!),
                 ],
+
+                // Fiscal alert (NCF running out)
+                if (ncfSequences.value != null) ...[
+                  _FiscalAlert(sequences: ncfSequences.value!),
+                ],
                 const SizedBox(height: 24),
               ]),
             ),
@@ -173,12 +181,14 @@ class DashboardScreen extends ConsumerWidget {
 class _KpiRow extends StatelessWidget {
   final double salesToday;
   final double salesMonth;
+  final double receivable;
   final List invoices;
   final NumberFormat currencyFmt;
 
   const _KpiRow({
     required this.salesToday,
     required this.salesMonth,
+    required this.receivable,
     required this.invoices,
     required this.currencyFmt,
   });
@@ -204,12 +214,19 @@ class _KpiRow extends StatelessWidget {
         index: 1,
       ),
       StatCard(
-        title: 'Facturas Pagadas',
+        title: 'Por Cobrar',
+        value: currencyFmt.format(receivable),
+        icon: Icons.pending_actions_rounded,
+        gradient: AppColors.gradientWarning,
+        index: 2,
+      ),
+      StatCard(
+        title: 'Pagadas',
         value: '$paidCount',
         subtitle: 'total: ${invoices.length}',
         icon: Icons.receipt_rounded,
         gradient: AppColors.gradientSuccess,
-        index: 2,
+        index: 3,
       ),
     ];
 
@@ -473,6 +490,65 @@ class _InvoiceTile extends StatelessWidget {
           ],
         ),
         onTap: () => context.push('/invoices/${invoice.id}'),
+      ),
+    );
+  }
+}
+
+class _FiscalAlert extends StatelessWidget {
+  final List sequences;
+  const _FiscalAlert({required this.sequences});
+
+  @override
+  Widget build(BuildContext context) {
+    final criticalSequences = sequences.where((s) {
+      final remaining = (s.to as int) - (s.lastUsed as int);
+      return remaining <= 10 && remaining > 0;
+    }).toList();
+
+    if (criticalSequences.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.gavel_rounded, color: AppColors.error, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Alerta Fiscal: NCF Agotándose',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...criticalSequences.map((s) {
+            final remaining = (s.to as int) - (s.lastUsed as int);
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Tipo ${s.type}', style: const TextStyle(fontSize: 13)),
+                  Text('Quedan: $remaining',
+                      style: const TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13)),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

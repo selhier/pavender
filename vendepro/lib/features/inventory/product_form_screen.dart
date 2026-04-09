@@ -29,6 +29,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _description = TextEditingController();
   String _unit = 'unidad';
   String? _categoryId;
+  double _taxRate = 0.18;
   bool _isLoading = false;
 
   @override
@@ -51,6 +52,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _description.text = p.description ?? '';
         _unit = p.unit;
         _categoryId = p.categoryId;
+        _taxRate = p.taxRate;
       });
     }
   }
@@ -77,6 +79,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             : _description.text),
         unit: drift.Value(_unit),
         categoryId: drift.Value(_categoryId),
+        taxRate: drift.Value(_taxRate),
         businessId: drift.Value(bId),
         updatedAt: drift.Value(DateTime.now()),
       );
@@ -92,6 +95,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           'cost': double.tryParse(_cost.text) ?? 0,
           'stock': int.tryParse(_stock.text) ?? 0,
           'minStock': int.tryParse(_minStock.text) ?? 5,
+          'taxRate': _taxRate,
           'businessId': bId,
           'isActive': true,
         },
@@ -168,6 +172,21 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                         keyboardType: TextInputType.number),
                   ),
                 ]),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<double>(
+                  value: _taxRate,
+                  decoration: const InputDecoration(
+                    labelText: 'Tasa de ITBIS',
+                    prefixIcon: Icon(Icons.percent_rounded, size: 20),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0.18, child: Text('ITBIS Normal (18%)')),
+                    DropdownMenuItem(value: 0.16, child: Text('ITBIS Reducido (16%)')),
+                    DropdownMenuItem(value: 0.08, child: Text('ITBIS Reducido (8%)')),
+                    DropdownMenuItem(value: 0.0, child: Text('Exento (0%)')),
+                  ],
+                  onChanged: (v) => setState(() => _taxRate = v!),
+                ),
               ]),
               const SizedBox(height: 20),
               _buildSection('Inventario', [

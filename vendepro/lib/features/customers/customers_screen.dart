@@ -96,6 +96,8 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                               Text(c.email!,
                                   style: const TextStyle(
                                       fontSize: 12, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            _CustomerBalanceWidget(customerId: c.id),
                           ],
                         ),
                         trailing: IconButton(
@@ -123,6 +125,35 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
+    );
+  }
+}
+
+class _CustomerBalanceWidget extends ConsumerWidget {
+  final String customerId;
+  const _CustomerBalanceWidget({required this.customerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balance = ref.watch(customerBalanceProvider(customerId));
+    
+    return balance.when(
+      data: (val) => val > 0 
+        ? Text(
+            'Debe: \$${val.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 13, 
+              color: AppColors.error, 
+              fontWeight: FontWeight.w700
+            ),
+          )
+        : const SizedBox.shrink(),
+      loading: () => const SizedBox(
+        width: 10, 
+        height: 10, 
+        child: CircularProgressIndicator(strokeWidth: 1, color: AppColors.primary)
+      ),
+      error: (_, __) => const Text('Error', style: TextStyle(fontSize: 10, color: Colors.red)),
     );
   }
 }

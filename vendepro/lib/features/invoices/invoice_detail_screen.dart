@@ -10,6 +10,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../reports/pdf_generator_service.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
   final String invoiceId;
@@ -31,8 +32,14 @@ class InvoiceDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_rounded,
                 color: AppColors.accent),
-            onPressed: () => _generatePdf(context, ref),
+            onPressed: () => _handlePrint(context, ref, isTicket: false),
             tooltip: 'Generar PDF',
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_long_rounded,
+                color: AppColors.success),
+            onPressed: () => _handlePrint(context, ref, isTicket: true),
+            tooltip: 'Imprimir Ticket POS',
           ),
         ],
       ),
@@ -74,19 +81,27 @@ class InvoiceDetailScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: GradientButton(
-                        label: 'Generar PDF',
+                        label: 'PDF (Carta)',
                         icon: Icons.picture_as_pdf_rounded,
                         gradient: AppColors.gradientAccent,
-                        onTap: () => _generatePdf(context, ref),
+                        onTap: () => _handlePrint(context, ref, isTicket: false),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GradientButton(
+                        label: 'Ticket (POS)',
+                        icon: Icons.receipt_long_rounded,
+                        gradient: AppColors.gradientSuccess,
+                        onTap: () => _handlePrint(context, ref, isTicket: true),
                       ),
                     ),
                     if (invoice.status == 'issued') ...[
                       const SizedBox(width: 12),
                       Expanded(
                         child: GradientButton(
-                          label: 'Marcar Pagado',
+                          label: 'Cobrar',
                           icon: Icons.check_circle_rounded,
-                          gradient: AppColors.gradientSuccess,
                           onTap: () async {
                             await db.invoicesDao
                                 .updateStatus(invoiceId, 'paid');
@@ -105,7 +120,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _generatePdf(BuildContext context, WidgetRef ref) async {
+  Future<void> _handlePrint(BuildContext context, WidgetRef ref, {required bool isTicket}) async {
     final db = ref.read(databaseProvider);
     final bId = ref.read(currentBusinessIdProvider);
     final invoice = await db.invoicesDao.getById(invoiceId);
@@ -114,154 +129,20 @@ class InvoiceDetailScreen extends ConsumerWidget {
 
     if (invoice == null) return;
 
-    final pdf = pw.Document();
-    final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context ctx) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(business?.name ?? 'Mi Negocio',
-                          style: pw.TextStyle(
-                              fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                      if (business?.address != null)
-                        pw.Text(business!.address!,
-                            style: const pw.TextStyle(fontSize: 11)),
-                      if (business?.phone != null)
-                        pw.Text('Tel: ${business!.phone!}',
-                            style: const pw.TextStyle(fontSize: 11)),
-                    ],
-                  ),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text('FACTURA',
-                          style: pw.TextStyle(
-                              fontSize: 18,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColor.fromHex('#6C63FF'))),
-                      pw.Text(invoice.invoiceNumber,
-                          style: const pw.TextStyle(fontSize: 13)),
-                      pw.Text(dateFmt.format(invoice.createdAt),
-                          style: const pw.TextStyle(fontSize: 11)),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
-              pw.SizedBox(height: 12),
-              // Customer
-              pw.Text('FACTURADO A:',
-                  style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold, fontSize: 10,
-                      color: PdfColors.grey700)),
-              pw.Text(invoice.customerName ?? 'Cliente general',
-                  style: pw.TextStyle(
-                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 20),
-              // Items table
-              pw.Table(
-                border: pw.TableBorder.all(
-                    color: PdfColors.grey300, width: 0.5),
-                columnWidths: {
-                  0: const pw.FlexColumnWidth(3),
-                  1: const pw.FlexColumnWidth(1),
-                  2: const pw.FlexColumnWidth(1.5),
-                  3: const pw.FlexColumnWidth(1.5),
-                },
-                children: [
-                  pw.TableRow(
-                    decoration:
-                        const pw.BoxDecoration(color: PdfColor.fromInt(0xFF6C63FF)),
-                    children: [
-                      _pdfCell('PRODUCTO', bold: true, white: true),
-                      _pdfCell('CANT.', bold: true, white: true),
-                      _pdfCell('PRECIO', bold: true, white: true),
-                      _pdfCell('SUBTOTAL', bold: true, white: true),
-                    ],
-                  ),
-                  ...items.map((item) => pw.TableRow(
-                    children: [
-                      _pdfCell(item.productName),
-                      _pdfCell('${item.quantity}'),
-                      _pdfCell('\$${item.unitPrice.toStringAsFixed(2)}'),
-                      _pdfCell('\$${item.subtotal.toStringAsFixed(2)}'),
-                    ],
-                  )),
-                ],
-              ),
-              pw.SizedBox(height: 12),
-              // Totals
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.end,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text(
-                          'Subtotal: \$${invoice.subtotal.toStringAsFixed(2)}',
-                          style: const pw.TextStyle(fontSize: 12)),
-                      pw.Text(
-                          'Impuesto: \$${invoice.taxAmount.toStringAsFixed(2)}',
-                          style: const pw.TextStyle(fontSize: 12)),
-                      if (invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount > 0.01)
-                        pw.Text(
-                            'Comisión Tarjeta: \$${(invoice.total - invoice.subtotal - invoice.taxAmount - invoice.discountAmount).toStringAsFixed(2)}',
-                            style: const pw.TextStyle(fontSize: 12)),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                          'TOTAL: \$${invoice.total.toStringAsFixed(2)}',
-                          style: pw.TextStyle(
-                              fontSize: 16,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColor.fromHex('#6C63FF'))),
-                    ],
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
-              pw.Center(
-                child: pw.Text('Gracias por su compra • VendePro',
-                    style: const pw.TextStyle(
-                        fontSize: 10, color: PdfColors.grey600)),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: '${invoice.invoiceNumber}.pdf',
-    );
-  }
-
-  static pw.Widget _pdfCell(String text, {bool bold = false, bool white = false}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.all(8),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(
-          fontSize: 11,
-          fontWeight: bold ? pw.FontWeight.bold : null,
-          color: white ? PdfColors.white : null,
-        ),
-      ),
-    );
+    final pdfService = PDFGeneratorService();
+    if (isTicket) {
+      await pdfService.generateInvoiceTicket(
+        invoice: invoice,
+        items: items,
+        business: business,
+      );
+    } else {
+      await pdfService.generateInvoiceStandard(
+        invoice: invoice,
+        items: items,
+        business: business,
+      );
+    }
   }
 }
 
@@ -310,12 +191,34 @@ class _InvoiceHeader extends StatelessWidget {
               const Icon(Icons.person_rounded,
                   color: Colors.white70, size: 16),
               const SizedBox(width: 6),
-              Text(
-                invoice.customerName ?? 'Cliente general',
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+              Expanded(
+                child: Text(
+                  invoice.customerName ?? 'Cliente general',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
             ],
           ),
+          if (invoice.customerTaxId != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.badge_rounded,
+                    color: Colors.white70, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'RNC: ${invoice.customerTaxId}',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             children: [
