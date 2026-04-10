@@ -1,44 +1,107 @@
 // lib/core/widgets/main_scaffold.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/database/app_database.dart';
 import '../theme/app_theme.dart';
+import '../providers/auth_provider.dart';
+import '../providers/providers.dart';
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerWidget {
   final Widget child;
   const MainScaffold({super.key, required this.child});
 
-  static const _navItems = [
+  static const _primaryItems = [
     _NavItem(icon: Icons.dashboard_rounded, label: 'Inicio', path: '/dashboard'),
-    _NavItem(icon: Icons.inventory_2_rounded, label: 'Inventario', path: '/inventory'),
-    _NavItem(icon: Icons.receipt_long_rounded, label: 'Facturas', path: '/invoices'),
+    _NavItem(icon: Icons.receipt_long_rounded, label: 'Ventas', path: '/invoices'),
+    _NavItem(icon: Icons.inventory_2_rounded, label: 'Productos', path: '/inventory'),
     _NavItem(icon: Icons.people_rounded, label: 'Clientes', path: '/customers'),
+  ];
+
+  static const _secondaryItems = [
+    _NavItem(icon: Icons.description_outlined, label: 'Cotizaciones', path: '/quotes'),
+    _NavItem(icon: Icons.local_shipping_outlined, label: 'Proveedores', path: '/suppliers'),
     _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Gastos', path: '/expenses'),
     _NavItem(icon: Icons.analytics_rounded, label: 'Reportes', path: '/reports'),
     _NavItem(icon: Icons.settings_rounded, label: 'Ajustes', path: '/settings'),
   ];
 
-  int _selectedIndex(BuildContext context) {
+  static List<_NavItem> _allNavItems(String role) {
+    final all = [..._primaryItems, ..._secondaryItems];
+    if (role == 'admin') return all;
+    return all.where((item) => 
+      item.path == '/dashboard' || 
+      item.path == '/invoices' || 
+      item.path == '/quotes' || 
+      item.path == '/customers'
+    ).toList();
+  }
+
+  int _selectedIndex(BuildContext context, List<_NavItem> items) {
     final location = GoRouterState.of(context).uri.path;
-    for (var i = 0; i < _navItems.length; i++) {
-      if (location.startsWith(_navItems[i].path)) return i;
+    for (var i = 0; i < items.length; i++) {
+      if (location.startsWith(items[i].path)) return i;
     }
-    return 0;
+    return -1;
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Start/Watch the sync service
+    ref.watch(syncServiceProvider);
+    
+    final role = ref.watch(userRoleProvider);
+    final businessInfo = ref.watch(businessProvider).valueOrNull;
+    final localUser = ref.watch(localUserProvider);
+    final allItems = _allNavItems(role);
+    
+    // For mobile bottom bar, we only show primary items that are allowed for the role
+    final bottomItems = _primaryItems.where((item) => allItems.contains(item)).toList();
+    // For the drawer, we show secondary items allowed for the role
+    final drawerItems = _secondaryItems.where((item) => allItems.contains(item)).toList();
+
     final isWide = MediaQuery.of(context).size.width >= 768;
-    final selectedIdx = _selectedIndex(context);
+    final selectedIdxBottom = _selectedIndex(context, bottomItems);
 
     if (isWide) {
       return Scaffold(
         body: Row(
           children: [
-            _SideNavRail(
-              selectedIndex: selectedIdx,
-              onTap: (i) => context.go(_navItems[i].path),
-              items: _navItems,
+            Column(
+              children: [
+                if (businessInfo != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppColors.primary,
+                          child: const Icon(Icons.store_rounded, color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          businessInfo.name, 
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                const Spacer(),
+                _UserAvatar(user: localUser),
+                const SizedBox(height: 20),
+                Expanded(
+                  flex: 10,
+                  child: _SideNavRail(
+                    selectedIndex: _selectedIndex(context, allItems),
+                    onTap: (i) => context.go(allItems[i].path),
+                    items: allItems,
+                    onLogout: () => ref.read(authControllerProvider.notifier).signOut(ref),
+                  ),
+                ),
+              ],
             ),
             const VerticalDivider(width: 1),
             Expanded(child: child),
@@ -48,25 +111,124 @@ class MainScaffold extends StatelessWidget {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(businessInfo?.name ?? 'VendePro'),
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        actions: [
+          _UserAvatar(user: localUser, small: true),
+        ],
+      ),
+      drawer: NavigationDrawer(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: AppColors.gradient,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(Icons.store_rounded, color: Colors.white, size: 40),
+                const SizedBox(height: 12),
+                Text(
+                  businessInfo?.name ?? 'Mi Negocio',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  localUser?.email ?? 'Administrador',
+                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(28, 16, 16, 10),
+            child: Text('Módulos', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          ...drawerItems.map((item) => NavigationDrawerDestination(
+            icon: Icon(item.icon),
+            label: Text(item.label),
+          )),
+          const Divider(indent: 16, endIndent: 16),
+          NavigationDrawerDestination(
+            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+            label: const Text('Cerrar Sesión', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+        onDestinationSelected: (idx) {
+          if (idx == drawerItems.length) {
+            // Logout selected (last item)
+            ref.read(authControllerProvider.notifier).signOut(ref);
+            return;
+          }
+          context.go(drawerItems[idx].path);
+          Navigator.pop(context);
+        },
+        selectedIndex: _selectedIndex(context, drawerItems) == -1 ? null : _selectedIndex(context, drawerItems),
+      ),
       body: child,
       bottomNavigationBar: _BottomNav(
-        selectedIndex: selectedIdx,
-        onTap: (i) => context.go(_navItems[i].path),
-        items: _navItems,
+        selectedIndex: selectedIdxBottom,
+        onTap: (i) => context.go(bottomItems[i].path),
+        items: bottomItems,
       ),
     );
   }
 }
 
+class _UserAvatar extends ConsumerWidget {
+  final AppUser? user;
+  final bool small;
+  const _UserAvatar({this.user, this.small = false});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: small ? 16 : 22,
+            backgroundColor: user?.role == 'admin' ? AppColors.primary : AppColors.accent.withValues(alpha: 0.2),
+            child: Icon(
+              user?.role == 'admin' ? Icons.shield_rounded : Icons.person_rounded,
+              size: small ? 18 : 24,
+              color: user?.role == 'admin' ? Colors.white : AppColors.accent,
+            ),
+          ),
+          if (!small) ...[
+            const SizedBox(height: 4),
+            Text(
+              user?.email ?? 'Admin', 
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
 class _SideNavRail extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
   final List<_NavItem> items;
+  final VoidCallback onLogout;
 
   const _SideNavRail({
     required this.selectedIndex,
     required this.onTap,
     required this.items,
+    required this.onLogout,
   });
 
   @override
@@ -137,6 +299,16 @@ class _SideNavRail extends StatelessWidget {
             );
           }),
           const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: ListTile(
+              leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+              title: const Text('Cerrar Sesión', 
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 14)),
+              onTap: onLogout,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
           const SizedBox(height: 16),
         ],
       ),

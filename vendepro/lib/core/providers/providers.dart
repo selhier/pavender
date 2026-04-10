@@ -144,3 +144,25 @@ final customerBalanceProvider = FutureProvider.family<double, String>((ref, cust
       .where((inv) => inv.status == 'issued')
       .fold<double>(0, (sum, inv) => sum + inv.total);
 });
+
+// Total Accounts Payable
+final totalPayableProvider = StreamProvider.autoDispose((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  return db.expensesDao.watchAllByBusiness(bId).map((expenses) => 
+    expenses.where((e) => e.status == 'pending').fold<double>(0, (sum, e) => sum + e.amount)
+  );
+});
+
+// Quotes Providers
+final quotesStreamProvider = StreamProvider.autoDispose((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  return db.quotesDao.watchAll(bId);
+});
+
+final suppliersStreamProvider = StreamProvider.autoDispose((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  return db.suppliersDao.watchAll(bId);
+});

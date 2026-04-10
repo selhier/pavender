@@ -27,6 +27,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _stock = TextEditingController();
   final _minStock = TextEditingController();
   final _description = TextEditingController();
+  final _brand = TextEditingController();
+  final _subCategory = TextEditingController();
   String _unit = 'unidad';
   String? _categoryId;
   double _taxRate = 0.18;
@@ -50,6 +52,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _stock.text = p.stock.toString();
         _minStock.text = p.minStock.toString();
         _description.text = p.description ?? '';
+        _brand.text = p.brand ?? '';
+        _subCategory.text = p.subCategory ?? '';
         _unit = p.unit;
         _categoryId = p.categoryId;
         _taxRate = p.taxRate;
@@ -79,27 +83,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             : _description.text),
         unit: drift.Value(_unit),
         categoryId: drift.Value(_categoryId),
+        brand: drift.Value(_brand.text.isEmpty ? null : _brand.text),
+        subCategory: drift.Value(_subCategory.text.isEmpty ? null : _subCategory.text),
         taxRate: drift.Value(_taxRate),
         businessId: drift.Value(bId),
         updatedAt: drift.Value(DateTime.now()),
       );
       await db.productsDao.upsert(companion);
-      await syncService.enqueueChange(
-        entity: 'products',
-        entityId: id,
-        operation: widget.productId == null ? 'create' : 'update',
-        data: {
-          'name': _name.text,
-          'sku': _sku.text,
-          'price': double.tryParse(_price.text) ?? 0,
-          'cost': double.tryParse(_cost.text) ?? 0,
-          'stock': int.tryParse(_stock.text) ?? 0,
-          'minStock': int.tryParse(_minStock.text) ?? 5,
-          'taxRate': _taxRate,
-          'businessId': bId,
-          'isActive': true,
-        },
-      );
+      
       if (mounted) context.pop();
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -152,6 +143,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: _buildField('Marca', _brand)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildField('Sub-Categoría', _subCategory)),
+                ]),
                 const SizedBox(height: 12),
                 _buildField('Descripción', _description, maxLines: 3),
               ]),
@@ -281,6 +278,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _stock.dispose();
     _minStock.dispose();
     _description.dispose();
+    _brand.dispose();
+    _subCategory.dispose();
     super.dispose();
   }
 }

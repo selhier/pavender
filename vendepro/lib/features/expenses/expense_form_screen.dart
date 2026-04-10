@@ -21,6 +21,8 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   String _category = 'Suministros';
+  Supplier? _selectedSupplier;
+  String _status = 'paid';
   bool _isLoading = false;
 
   final List<String> _categories = [
@@ -57,23 +59,11 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
         amount: drift.Value(double.tryParse(_amountCtrl.text) ?? 0.0),
         description: drift.Value(_descCtrl.text.trim()),
         category: drift.Value(_category),
+        supplierId: drift.Value(_selectedSupplier?.id),
+        status: drift.Value(_status),
         date: drift.Value(now),
         businessId: drift.Value(bId),
       ));
-
-      await syncService.enqueueChange(
-        entity: 'expenses',
-        entityId: id,
-        operation: 'create',
-        data: {
-          'amount': double.tryParse(_amountCtrl.text) ?? 0.0,
-          'description': _descCtrl.text.trim(),
-          'category': _category,
-          'businessId': bId,
-          'status': 'paid',
-          'date': now.toIso8601String(),
-        },
-      );
 
       if (mounted) context.pop();
     } finally {
@@ -146,6 +136,35 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 ),
                 items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (v) => setState(() => _category = v!),
+              ),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, _) {
+                  final suppliers = ref.watch(suppliersStreamProvider);
+                  return DropdownButtonFormField<Supplier?>(
+                    value: _selectedSupplier,
+                    decoration: const InputDecoration(
+                      labelText: 'Proveedor (Opcional)',
+                      prefixIcon: Icon(Icons.business_rounded),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Gasto General')),
+                      ...?(suppliers.value?.map((s) => DropdownMenuItem(value: s, child: Text(s.name)))),
+                    ],
+                    onChanged: (v) => setState(() => _selectedSupplier = v),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Compra a Crédito'),
+                subtitle: const Text('El gasto se marcará como pendiente de pago.'),
+                value: _status == 'pending',
+                onChanged: (v) => setState(() => _status = v ? 'pending' : 'paid'),
+                secondary: Icon(
+                  _status == 'pending' ? Icons.timer_outlined : Icons.check_circle_outline,
+                  color: _status == 'pending' ? AppColors.warning : AppColors.success,
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(

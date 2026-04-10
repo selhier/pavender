@@ -293,9 +293,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
     
+                // Administrative section (Branch & Users)
+                _SectionCard(
+                  title: 'Administración Global (Solo Admin)',
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.business_rounded, color: AppColors.primary),
+                      title: const Text('Sucursales / Empresas'),
+                      subtitle: const Text('Crear y cambiar entre sucursales'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () => context.push('/settings/branches'),
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.people_alt_rounded, color: AppColors.primary),
+                      title: const Text('Gestión de Usuarios'),
+                      subtitle: const Text('Cuentas para empleados y cajeros'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () => context.push('/settings/users'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+    
                 // Preferences
                 _SectionCard(
-                  title: 'Preferencias',
+                  title: 'Preferencias y Seguridad',
                   children: [
                     SwitchListTile(
                       title: const Text('Modo Oscuro'),
@@ -304,6 +329,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       activeColor: AppColors.primary,
                       onChanged: (v) =>
                           ref.read(themeModeProvider.notifier).state = v,
+                    ),
+                    const Divider(),
+                    ListTile(
+                      title: const Text('Rol de Usuario'),
+                      subtitle: Text(ref.watch(userRoleProvider) == 'admin' ? 'Administrador (Total)' : 'Cajero (Restringido)'),
                     ),
                   ],
                 ),
@@ -325,7 +355,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.logout_rounded,
                     gradient: const LinearGradient(colors: [AppColors.error, Color.fromARGB(255, 235, 114, 114)]),
                     onTap: () async {
-                      await ref.read(authControllerProvider.notifier).signOut();
+                      await ref.read(authControllerProvider.notifier).signOut(ref);
                       // The router will handle redirection to /login
                     },
                   ),

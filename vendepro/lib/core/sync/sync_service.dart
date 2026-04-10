@@ -108,8 +108,8 @@ class SyncService {
   /// Pull latest data from Firestore and update local DB
   Future<void> pullFromCloud() async {
     try {
-      const businessId = 'default_business'; // TODO: from session
-      // Pull products
+      final businessId = _businessId;
+      // 1. Pull products
       final productsSnap = await _firestore
           .collection('businesses')
           .doc(businessId)
@@ -128,12 +128,56 @@ class SyncService {
           stock: drift.Value(data['stock'] ?? 0),
           minStock: drift.Value(data['minStock'] ?? 5),
           categoryId: drift.Value(data['categoryId']),
+          unit: drift.Value(data['unit'] ?? 'unidad'),
+          taxRate: drift.Value((data['taxRate'] ?? 0.18).toDouble()),
+          brand: drift.Value(data['brand']),
+          subCategory: drift.Value(data['subCategory']),
           businessId: drift.Value(businessId),
           isActive: drift.Value(data['isActive'] ?? true),
+          updatedAt: drift.Value(DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now()),
         ));
       }
 
-      // Pull invoices
+      // 2. Pull Customers
+      final customersSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('customers')
+          .get();
+      for (final doc in customersSnap.docs) {
+        final data = doc.data();
+        await _db.customersDao.upsert(CustomersCompanion(
+          id: drift.Value(doc.id),
+          name: drift.Value(data['name'] ?? ''),
+          phone: drift.Value(data['phone']),
+          email: drift.Value(data['email']),
+          address: drift.Value(data['address']),
+          taxId: drift.Value(data['taxId']),
+          businessId: drift.Value(businessId),
+          updatedAt: drift.Value(DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now()),
+        ));
+      }
+
+      // 3. Pull Suppliers
+      final suppliersSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('suppliers')
+          .get();
+      for (final doc in suppliersSnap.docs) {
+        final data = doc.data();
+        await _db.suppliersDao.upsert(SuppliersCompanion(
+          id: drift.Value(doc.id),
+          name: drift.Value(data['name'] ?? ''),
+          phone: drift.Value(data['phone']),
+          email: drift.Value(data['email']),
+          address: drift.Value(data['address']),
+          rnc: drift.Value(data['rnc'] ?? data['taxId']),
+          businessId: drift.Value(businessId),
+        ));
+      }
+
+      // 4. Pull invoices
       final invoicesSnap = await _firestore
           .collection('businesses')
           .doc(businessId)
@@ -141,11 +185,42 @@ class SyncService {
           .get();
 
       for (final doc in invoicesSnap.docs) {
-        await _db.invoicesDao.markSynced(doc.id);
-        // Additional merge logic as needed
+        final data = doc.data();
+        await _db.invoicesDao.upsert(InvoicesCompanion(
+          id: drift.Value(doc.id),
+          invoiceNumber: drift.Value(data['invoiceNumber'] ?? ''),
+          ncf: drift.Value(data['ncf']),
+          ncfType: drift.Value(data['ncfType']),
+          customerName: drift.Value(data['customerName'] ?? 'Cliente general'),
+          status: drift.Value(data['status'] ?? 'paid'),
+          subtotal: drift.Value((data['subtotal'] ?? 0).toDouble()),
+          taxAmount: drift.Value((data['taxAmount'] ?? 0).toDouble()),
+          total: drift.Value((data['total'] ?? 0).toDouble()),
+          paymentMethod: drift.Value(data['paymentMethod'] ?? 'cash'),
+          currency: drift.Value(data['currency'] ?? 'DOP'),
+          exchangeRate: drift.Value((data['exchangeRate'] ?? 1.0).toDouble()),
+          businessId: drift.Value(businessId),
+          createdAt: drift.Value(DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now()),
+        ));
+
+        // Pull Invoice Items
+        final itemsSnap = await doc.reference.collection('invoice_items').get();
+        for (final itemDoc in itemsSnap.docs) {
+          final itemData = itemDoc.data();
+          await _db.invoicesDao.upsertItem(InvoiceItemsCompanion(
+            id: drift.Value(itemDoc.id),
+            invoiceId: drift.Value(doc.id),
+            productId: drift.Value(itemData['productId'] ?? ''),
+            productName: drift.Value(itemData['productName'] ?? ''),
+            unitPrice: drift.Value((itemData['unitPrice'] ?? 0).toDouble()),
+            quantity: drift.Value(itemData['quantity'] ?? 1),
+            taxAmount: drift.Value((itemData['taxAmount'] ?? 0).toDouble()),
+            subtotal: drift.Value((itemData['subtotal'] ?? 0).toDouble()),
+          ));
+        }
       }
 
-      // Pull expenses
+      // 5. Pull expenses
       final expensesSnap = await _firestore
           .collection('businesses')
           .doc(businessId)
@@ -154,7 +229,7 @@ class SyncService {
 
       for (final doc in expensesSnap.docs) {
         final data = doc.data();
-        await _db.expensesDao.updateExpense(ExpensesCompanion(
+        await _db.expensesDao.upsert(ExpensesCompanion(
           id: drift.Value(doc.id),
           amount: drift.Value((data['amount'] ?? 0).toDouble()),
           description: drift.Value(data['description'] ?? ''),
@@ -163,6 +238,78 @@ class SyncService {
           businessId: drift.Value(businessId),
           status: drift.Value(data['status'] ?? 'paid'),
           synced: const drift.Value(true),
+        ));
+      }
+
+      // 6. Pull Quotes
+      final quotesSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('quotes')
+          .get();
+      for (final doc in quotesSnap.docs) {
+        final data = doc.data();
+        await _db.quotesDao.upsert(QuotesCompanion(
+          id: drift.Value(doc.id),
+          quoteNumber: drift.Value(data['quoteNumber'] ?? ''),
+          customerName: drift.Value(data['customerName'] ?? 'Cliente general'),
+          status: drift.Value(data['status'] ?? 'pending'),
+          total: drift.Value((data['total'] ?? 0).toDouble()),
+          businessId: drift.Value(businessId),
+          createdAt: drift.Value(DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now()),
+        ));
+
+        // Pull Quote Items
+        final itemsSnap = await doc.reference.collection('quote_items').get();
+        for (final itemDoc in itemsSnap.docs) {
+          final itemData = itemDoc.data();
+          await _db.quotesDao.upsertItem(QuoteItemsCompanion(
+            id: drift.Value(itemDoc.id),
+            quoteId: drift.Value(doc.id),
+            productId: drift.Value(itemData['productId'] ?? ''),
+            productName: drift.Value(itemData['productName'] ?? ''),
+            unitPrice: drift.Value((itemData['unitPrice'] ?? 0).toDouble()),
+            quantity: drift.Value(itemData['quantity'] ?? 1),
+            taxAmount: drift.Value((itemData['taxAmount'] ?? 0).toDouble()),
+            subtotal: drift.Value((itemData['subtotal'] ?? 0).toDouble()),
+          ));
+        }
+      }
+
+      // 7. Pull NCF Sequences
+      final ncfSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('ncf_sequences')
+          .get();
+      for (final doc in ncfSnap.docs) {
+        final data = doc.data();
+        await _db.ncfDao.upsert(NcfSequencesCompanion(
+          id: drift.Value(doc.id),
+          type: drift.Value(data['type'] ?? ''),
+          prefix: drift.Value(data['prefix'] ?? 'B'),
+          from: drift.Value(data['from'] ?? 1),
+          to: drift.Value(data['to'] ?? 9999),
+          lastUsed: drift.Value(data['lastUsed'] ?? 0),
+          businessId: drift.Value(businessId),
+          isActive: drift.Value(data['isActive'] ?? true),
+        ));
+      }
+
+      // 8. Pull Users (Admin created)
+      final usersSnap = await _firestore
+          .collection('businesses')
+          .doc(businessId)
+          .collection('users')
+          .get();
+      for (final doc in usersSnap.docs) {
+        final data = doc.data();
+        await _db.authDao.upsert(AppUsersCompanion(
+          id: drift.Value(doc.id),
+          email: drift.Value(data['email'] ?? ''),
+          passwordHash: drift.Value(data['passwordHash'] ?? ''),
+          role: drift.Value(data['role'] ?? 'cashier'),
+          businessId: drift.Value(businessId),
         ));
       }
     } catch (e) {

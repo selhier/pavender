@@ -39,6 +39,9 @@ class VendePro extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Restore local session if exists
+    ref.watch(authInitProvider);
+    
     final isDark = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'VendePro',

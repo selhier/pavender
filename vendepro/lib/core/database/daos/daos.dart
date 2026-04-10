@@ -1,9 +1,22 @@
-// lib/core/database/daos/daos.dart
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../tables/tables.dart';
 
 part 'daos.g.dart';
+
+Map<String, dynamic> _mapCompanion(UpdateCompanion companion) {
+  return companion.toColumns(true).map((key, value) {
+    if (value is Variable) {
+      final val = value.value;
+      if (val is DateTime) {
+        return MapEntry(key, val.toIso8601String());
+      }
+      return MapEntry(key, val);
+    }
+    return MapEntry(key, null);
+  });
+}
 
 @DriftAccessor(tables: [Products, Categories])
 class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin {
@@ -27,8 +40,16 @@ class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin 
   Future<Product?> getById(String id) =>
       (select(products)..where((p) => p.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsert(ProductsCompanion product) =>
-      into(products).insertOnConflictUpdate(product);
+  Future<void> upsert(ProductsCompanion product) async {
+    await into(products).insertOnConflictUpdate(product);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'prod_${product.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'products',
+      entityId: product.id.value,
+      operation: 'upsert',
+      data: jsonEncode(_mapCompanion(product)),
+    ));
+  }
 
   Future<List<Category>> getCategories(String businessId) =>
       (select(categories)..where((c) => c.businessId.equals(businessId))).get();
@@ -66,18 +87,51 @@ class InvoicesDao extends DatabaseAccessor<AppDatabase>
   Future<Invoice?> getById(String id) =>
       (select(invoices)..where((i) => i.id.equals(id))).getSingleOrNull();
 
-  Future<String> insertInvoice(InvoicesCompanion invoice) =>
-      into(invoices).insertReturning(invoice).then((i) => i.id);
+  Future<String> insertInvoice(InvoicesCompanion invoice) async {
+    final id = await into(invoices).insertReturning(invoice).then((i) => i.id);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'inv_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'invoices',
+      entityId: id,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(invoice)..['id'] = id),
+    ));
+    return id;
+  }
 
-  Future<void> insertItem(InvoiceItemsCompanion item) =>
-      into(invoiceItems).insert(item);
+  Future<void> upsert(InvoicesCompanion invoice) async {
+    await into(invoices).insertOnConflictUpdate(invoice);
+  }
 
-  Future<void> updateStatus(String id, String status) =>
-      (update(invoices)..where((i) => i.id.equals(id)))
+  Future<void> upsertItem(InvoiceItemsCompanion item) async {
+    await into(invoiceItems).insertOnConflictUpdate(item);
+  }
+
+  Future<void> insertItem(InvoiceItemsCompanion item) async {
+    await into(invoiceItems).insert(item);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'inv_item_${item.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'invoice_items',
+      entityId: item.id.value,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(item)),
+    ));
+  }
+
+  Future<void> updateStatus(String id, String status) async {
+    await (update(invoices)..where((i) => i.id.equals(id)))
           .write(InvoicesCompanion(
         status: Value(status),
         updatedAt: Value(DateTime.now()),
       ));
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'inv_status_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'invoices',
+      entityId: id,
+      operation: 'update',
+      data: jsonEncode({'id': id, 'status': status, 'updatedAt': DateTime.now().toIso8601String()}),
+    ));
+  }
 
   Future<double> getTotalSales(String businessId,
       {DateTime? from, DateTime? to}) async {
@@ -141,8 +195,16 @@ class CustomersDao extends DatabaseAccessor<AppDatabase>
   Future<Customer?> getById(String id) =>
       (select(customers)..where((c) => c.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsert(CustomersCompanion customer) =>
-      into(customers).insertOnConflictUpdate(customer);
+  Future<void> upsert(CustomersCompanion customer) async {
+    await into(customers).insertOnConflictUpdate(customer);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'cust_${customer.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'customers',
+      entityId: customer.id.value,
+      operation: 'upsert',
+      data: jsonEncode(_mapCompanion(customer)),
+    ));
+  }
 
   Future<List<Customer>> search(String businessId, String query) =>
       (select(customers)
@@ -180,8 +242,19 @@ class BusinessDao extends DatabaseAccessor<AppDatabase> with _$BusinessDaoMixin 
   Stream<BusinessesData?> watchBusiness(String id) =>
       (select(businesses)..where((b) => b.id.equals(id))).watchSingleOrNull();
 
-  Future<void> upsert(BusinessesCompanion business) =>
-      into(businesses).insertOnConflictUpdate(business);
+  Future<List<BusinessesData>> getAllBranches() =>
+      select(businesses).get();
+
+  Future<void> upsert(BusinessesCompanion business) async {
+    await into(businesses).insertOnConflictUpdate(business);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'biz_${business.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'businesses',
+      entityId: business.id.value,
+      operation: 'upsert',
+      data: jsonEncode(_mapCompanion(business)),
+    ));
+  }
 
   Future<String?> getSetting(String key) async {
     final row = await (select(appSettings)..where((s) => s.key.equals(key)))
@@ -213,16 +286,44 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase> with _$ExpensesDaoMixin 
         .get();
   }
 
-  Future<void> insertExpense(ExpensesCompanion expense) {
-    return into(expenses).insert(expense);
+  Future<void> upsert(ExpensesCompanion expense) async {
+    await into(expenses).insertOnConflictUpdate(expense);
+    // Note: Manual enqueuing is NOT done here if we are pulling from cloud 
+    // to avoid cycles. DAOs should handle local-to-cloud sync elsewhere 
+    // or take a flag. For now, pullFromCloud will use this.
   }
 
-  Future<void> updateExpense(ExpensesCompanion expense) {
-    return update(expenses).replace(expense);
+  Future<void> insertExpense(ExpensesCompanion expense) async {
+    await into(expenses).insert(expense);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'exp_${expense.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'expenses',
+      entityId: expense.id.value,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(expense)),
+    ));
   }
 
-  Future<void> deleteExpense(String id) {
-    return (delete(expenses)..where((e) => e.id.equals(id))).go();
+  Future<void> updateExpense(ExpensesCompanion expense) async {
+    await update(expenses).replace(expense);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'exp_upd_${expense.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'expenses',
+      entityId: expense.id.value,
+      operation: 'update',
+      data: jsonEncode(_mapCompanion(expense)),
+    ));
+  }
+
+  Future<void> deleteExpense(String id) async {
+    await (delete(expenses)..where((e) => e.id.equals(id))).go();
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'exp_del_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'expenses',
+      entityId: id,
+      operation: 'delete',
+      data: jsonEncode({'id': id}),
+    ));
   }
 }
 @DriftAccessor(tables: [NcfSequences])
@@ -232,8 +333,16 @@ class NcfDao extends DatabaseAccessor<AppDatabase> with _$NcfDaoMixin {
   Stream<List<NcfSequence>> watchAll(String businessId) =>
       (select(ncfSequences)..where((s) => s.businessId.equals(businessId))).watch();
 
-  Future<void> upsert(NcfSequencesCompanion sequence) =>
-      into(ncfSequences).insertOnConflictUpdate(sequence);
+  Future<void> upsert(NcfSequencesCompanion sequence) async {
+    await into(ncfSequences).insertOnConflictUpdate(sequence);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'ncf_${sequence.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'ncf_sequences',
+      entityId: sequence.id.value,
+      operation: 'upsert',
+      data: jsonEncode(_mapCompanion(sequence)),
+    ));
+  }
 
   Future<void> deleteSequence(String id) =>
       (delete(ncfSequences)..where((s) => s.id.equals(id))).go();
@@ -257,5 +366,115 @@ class NcfDao extends DatabaseAccessor<AppDatabase> with _$NcfDaoMixin {
 
     // Format B0100000001
     return '${seq.prefix}${seq.type}${nextVal.toString().padLeft(8, '0')}';
+  }
+}
+
+@DriftAccessor(tables: [Quotes, QuoteItems])
+class QuotesDao extends DatabaseAccessor<AppDatabase> with _$QuotesDaoMixin {
+  QuotesDao(super.db);
+
+  Stream<List<Quote>> watchAll(String businessId) =>
+      (select(quotes)
+            ..where((q) => q.businessId.equals(businessId))
+            ..orderBy([(q) => OrderingTerm.desc(q.createdAt)]))
+          .watch();
+
+  Future<List<QuoteItem>> getItems(String quoteId) =>
+      (select(quoteItems)..where((i) => i.quoteId.equals(quoteId))).get();
+
+  Future<Quote?> getById(String id) =>
+      (select(quotes)..where((q) => q.id.equals(id))).getSingleOrNull();
+
+  Future<String> insertQuote(QuotesCompanion quote) async {
+    final id = await into(quotes).insertReturning(quote).then((q) => q.id);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'quo_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'quotes',
+      entityId: id,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(quote)..['id'] = id),
+    ));
+    return id;
+  }
+
+  Future<void> upsert(QuotesCompanion quote) async {
+    await into(quotes).insertOnConflictUpdate(quote);
+  }
+
+  Future<void> upsertItem(QuoteItemsCompanion item) async {
+    await into(quoteItems).insertOnConflictUpdate(item);
+  }
+
+  Future<void> insertItem(QuoteItemsCompanion item) async {
+    await into(quoteItems).insert(item);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'quo_item_${item.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'quote_items',
+      entityId: item.id.value,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(item)),
+    ));
+  }
+
+  Future<void> updateStatus(String id, String status) async {
+    await (update(quotes)..where((q) => q.id.equals(id)))
+          .write(QuotesCompanion(status: Value(status)));
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'quo_status_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'quotes',
+      entityId: id,
+      operation: 'update',
+      data: jsonEncode({'id': id, 'status': status, 'updatedAt': DateTime.now().toIso8601String()}),
+    ));
+  }
+}
+
+@DriftAccessor(tables: [Suppliers])
+class SuppliersDao extends DatabaseAccessor<AppDatabase> with _$SuppliersDaoMixin {
+  SuppliersDao(super.db);
+
+  Stream<List<Supplier>> watchAll(String businessId) =>
+      (select(suppliers)
+            ..where((s) => s.businessId.equals(businessId))
+            ..orderBy([(s) => OrderingTerm.asc(s.name)]))
+          .watch();
+
+  Future<void> upsert(SuppliersCompanion supplier) async {
+    await into(suppliers).insertOnConflictUpdate(supplier);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'sup_${supplier.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'suppliers',
+      entityId: supplier.id.value,
+      operation: 'upsert',
+      data: jsonEncode(_mapCompanion(supplier)),
+    ));
+  }
+
+  Future<Supplier?> getById(String id) =>
+      (select(suppliers)..where((s) => s.id.equals(id))).getSingleOrNull();
+}
+
+@DriftAccessor(tables: [AppUsers])
+class AuthDao extends DatabaseAccessor<AppDatabase> with _$AuthDaoMixin {
+  AuthDao(super.db);
+
+  Future<AppUser?> login(String email, String passwordHash) =>
+      (select(appUsers)
+            ..where((u) => u.email.equals(email) & u.passwordHash.equals(passwordHash)))
+          .getSingleOrNull();
+
+  Future<void> upsert(AppUsersCompanion user) async {
+    await into(appUsers).insertOnConflictUpdate(user);
+  }
+
+  Future<void> register(AppUsersCompanion user) async {
+    await into(appUsers).insert(user);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'user_${user.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'users',
+      entityId: user.id.value,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(user)),
+    ));
   }
 }

@@ -37,7 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
     
     try {
-      await ref.read(authControllerProvider.notifier).signIn(email, password);
+      await ref.read(authControllerProvider.notifier).signIn(email, password, ref);
       // Let the router handle the redirection once auth state changes
     } catch (e) {
       if (mounted) {

@@ -28,3 +28,13 @@ mixin _$ExpensesDaoMixin on DatabaseAccessor<AppDatabase> {
 mixin _$NcfDaoMixin on DatabaseAccessor<AppDatabase> {
   $NcfSequencesTable get ncfSequences => attachedDatabase.ncfSequences;
 }
+mixin _$QuotesDaoMixin on DatabaseAccessor<AppDatabase> {
+  $QuotesTable get quotes => attachedDatabase.quotes;
+  $QuoteItemsTable get quoteItems => attachedDatabase.quoteItems;
+}
+mixin _$SuppliersDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SuppliersTable get suppliers => attachedDatabase.suppliers;
+}
+mixin _$AuthDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AppUsersTable get appUsers => attachedDatabase.appUsers;
+}

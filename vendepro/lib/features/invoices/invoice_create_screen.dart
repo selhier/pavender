@@ -47,6 +47,8 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   bool _isLoading = false;
   bool _isValidatingRnc = false;
   String _productSearch = '';
+  String _currency = 'DOP';
+  final _exchangeRateCtrl = TextEditingController(text: '1.0');
   String? _ncfType; // DR Localization
 
   double get _subtotal => _cart.fold(0, (s, i) => s + i.subtotal);
@@ -107,6 +109,38 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                     _SummaryRow('Comisión Tarjeta', '\$${fee.toStringAsFixed(2)}'),
                   const Divider(),
                   _SummaryRow('TOTAL', '\$${finalTotal.toStringAsFixed(2)}', isTotal: true),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _currency,
+                          decoration: const InputDecoration(
+                            labelText: 'Moneda',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'DOP', child: Text('DOP (RD\$)')),
+                            DropdownMenuItem(value: 'USD', child: Text('USD (US\$)')),
+                          ],
+                          onChanged: (v) => setState(() => _currency = v!),
+                        ),
+                      ),
+                      if (_currency == 'USD') ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _exchangeRateCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Tasa RD\$',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: _paymentMethod,
@@ -493,6 +527,8 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         taxAmount: drift.Value(taxAmount),
         total: drift.Value(total),
         paymentMethod: drift.Value(_paymentMethod),
+        currency: drift.Value(_currency),
+        exchangeRate: drift.Value(double.tryParse(_exchangeRateCtrl.text) ?? 1.0),
         businessId: drift.Value(bId),
         notes: drift.Value(_notesCtrl.text.isEmpty ? null : _notesCtrl.text),
       ));
@@ -513,24 +549,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         await db.productsDao.updateStock(item.product.id as String,
             newStock < 0 ? 0 : newStock);
       }
-
-      await syncService.enqueueChange(
-        entity: 'invoices',
-        entityId: id,
-        operation: 'create',
-        data: {
-          'invoiceNumber': invoiceNum,
-          'customerName': _selectedCustomer?.name ?? 'Cliente general',
-          'status': status,
-          'subtotal': _subtotal,
-          'taxAmount': taxAmount,
-          'cardFee': feeAmount,
-          'total': total,
-          'paymentMethod': _paymentMethod,
-          'businessId': bId,
-          'createdAt': DateTime.now().toIso8601String(),
-        },
-      );
 
       if (mounted) {
         context.pop();
@@ -554,6 +572,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   void dispose() {
     _notesCtrl.dispose();
     _taxIdCtrl.dispose();
+    _exchangeRateCtrl.dispose();
     super.dispose();
   }
 }

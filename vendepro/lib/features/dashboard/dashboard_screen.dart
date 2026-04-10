@@ -22,6 +22,7 @@ class DashboardScreen extends ConsumerWidget {
     final lowStock = ref.watch(lowStockProvider);
     final ncfSequences = ref.watch(ncfSequencesProvider);
     final totalReceivable = ref.watch(totalReceivableProvider);
+    final totalPayable = ref.watch(totalPayableProvider);
 
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
@@ -111,6 +112,7 @@ class DashboardScreen extends ConsumerWidget {
                   salesToday: salesToday.value ?? 0.0,
                   salesMonth: salesMonth.value ?? 0.0,
                   receivable: totalReceivable.value ?? 0.0,
+                  payable: totalPayable.value ?? 0.0,
                   invoices: invoices.value ?? [],
                   currencyFmt: currencyFmt,
                 ),
@@ -182,6 +184,7 @@ class _KpiRow extends StatelessWidget {
   final double salesToday;
   final double salesMonth;
   final double receivable;
+  final double payable;
   final List invoices;
   final NumberFormat currencyFmt;
 
@@ -189,6 +192,7 @@ class _KpiRow extends StatelessWidget {
     required this.salesToday,
     required this.salesMonth,
     required this.receivable,
+    required this.payable,
     required this.invoices,
     required this.currencyFmt,
   });
@@ -221,27 +225,36 @@ class _KpiRow extends StatelessWidget {
         index: 2,
       ),
       StatCard(
+        title: 'Por Pagar',
+        value: currencyFmt.format(payable),
+        icon: Icons.outbox_rounded,
+        gradient: const LinearGradient(colors: [Colors.blueGrey, Colors.grey]),
+        index: 3,
+      ),
+      StatCard(
         title: 'Pagadas',
         value: '$paidCount',
         subtitle: 'total: ${invoices.length}',
         icon: Icons.receipt_rounded,
         gradient: AppColors.gradientSuccess,
-        index: 3,
+        index: 4,
       ),
     ];
 
     if (isWide) {
       return SizedBox(
         height: 160,
-        child: Row(
-          children: cards
-              .map((c) => Expanded(
-                    child: Padding(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: cards
+                .map((c) => Container(
+                      width: 220,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: c,
-                    ),
-                  ))
-              .toList(),
+                    ))
+                .toList(),
+          ),
         ),
       );
     }
@@ -358,16 +371,34 @@ class _SalesChart extends StatelessWidget {
   Widget build(BuildContext context) {
     // Group paid invoices by day (last 7 days)
     final now = DateTime.now();
-    final spots = List.generate(7, (i) {
+    
+    // Current week spots
+    final currentWeekSpots = List.generate(7, (i) {
       final day = now.subtract(Duration(days: 6 - i));
       final total = invoices
           .where((inv) =>
               inv != null &&
               inv.status == 'paid' &&
               inv.createdAt != null &&
-              inv.createdAt.day == day.day &&
-              inv.createdAt.month == day.month)
-          .fold<double>(0, (sum, inv) => sum + ((inv.total ?? 0.0) as double));
+              inv.createdAt.year == day.year &&
+              inv.createdAt.month == day.month &&
+              inv.createdAt.day == day.day)
+          .fold<double>(0.0, (sum, inv) => sum + (inv.total as double));
+      return FlSpot(i.toDouble(), total);
+    });
+
+    // Previous week spots for comparison
+    final previousWeekSpots = List.generate(7, (i) {
+      final day = now.subtract(Duration(days: 13 - i));
+      final total = invoices
+          .where((inv) =>
+              inv != null &&
+              inv.status == 'paid' &&
+              inv.createdAt != null &&
+              inv.createdAt.year == day.year &&
+              inv.createdAt.month == day.month &&
+              inv.createdAt.day == day.day)
+          .fold<double>(0.0, (sum, inv) => sum + (inv.total as double));
       return FlSpot(i.toDouble(), total);
     });
 
@@ -382,8 +413,19 @@ class _SalesChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Ventas Últimos 7 Días',
-              style: Theme.of(context).textTheme.titleSmall),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Comparativa Ventas Semanales', style: Theme.of(context).textTheme.titleSmall),
+              Row(
+                children: [
+                   _ChartLegend(label: 'Hoy', color: AppColors.primary),
+                   const SizedBox(width: 12),
+                   _ChartLegend(label: 'Prev.', color: Colors.grey.withOpacity(0.5)),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
           SizedBox(
             height: 160,
@@ -422,18 +464,26 @@ class _SalesChart extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: spots,
+                    spots: previousWeekSpots,
+                    isCurved: true,
+                    color: Colors.grey.withOpacity(0.3),
+                    barWidth: 2,
+                    dashArray: [5, 5],
+                    dotData: const FlDotData(show: false),
+                  ),
+                  LineChartBarData(
+                    spots: currentWeekSpots,
                     isCurved: true,
                     gradient: AppColors.gradient,
-                    barWidth: 3,
-                    dotData: const FlDotData(show: false),
+                    barWidth: 4,
+                    dotData: const FlDotData(show: true),
                     belowBarData: BarAreaData(
                       show: true,
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppColors.primary.withOpacity(0.3),
+                          AppColors.primary.withOpacity(0.2),
                           AppColors.primary.withOpacity(0.0),
                         ],
                       ),
@@ -445,6 +495,23 @@ class _SalesChart extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _ChartLegend({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

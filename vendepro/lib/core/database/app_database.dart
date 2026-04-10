@@ -18,6 +18,10 @@ part 'app_database.g.dart';
     AppSettings,
     Expenses,
     NcfSequences,
+    Quotes,
+    QuoteItems,
+    Suppliers,
+    AppUsers,
   ],
   daos: [
     ProductsDao,
@@ -27,13 +31,16 @@ part 'app_database.g.dart';
     BusinessDao,
     ExpensesDao,
     NcfDao,
+    QuotesDao,
+    SuppliersDao,
+    AuthDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -77,6 +84,19 @@ class AppDatabase extends _$AppDatabase {
             // Add taxRate to products and taxAmount to invoiceItems
             await m.addColumn(products, products.taxRate);
             await m.addColumn(invoiceItems, invoiceItems.taxAmount);
+          }
+          if (from < 6) {
+            // New tables for Quotes, Suppliers, Users
+            await m.createTable(quotes);
+            await m.createTable(quoteItems);
+            await m.createTable(suppliers);
+            await m.createTable(appUsers);
+            // New columns in Products (brand, subcategory) and Invoices (currency, rate)
+            await m.addColumn(products, products.brand);
+            await m.addColumn(products, products.subCategory);
+            await m.addColumn(invoices, invoices.currency);
+            await m.addColumn(invoices, invoices.exchangeRate);
+            await m.addColumn(expenses, expenses.supplierId);
           }
         },
       );

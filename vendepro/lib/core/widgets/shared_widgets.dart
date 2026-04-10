@@ -531,3 +531,39 @@ class SkeletonProductCard extends StatelessWidget {
     );
   }
 }
+
+class ProductGridCard extends StatelessWidget {
+  final dynamic product;
+  final VoidCallback onTap;
+  const ProductGridCard({super.key, required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.inventory_2_rounded, color: AppColors.primary, size: 28),
+            const SizedBox(height: 8),
+            Text(product.name, 
+                 textAlign: TextAlign.center,
+                 maxLines: 1, 
+                 overflow: TextOverflow.ellipsis,
+                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text('\$${product.price.toStringAsFixed(2)}',
+                 style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

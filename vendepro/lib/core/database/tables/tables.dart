@@ -47,6 +47,8 @@ class Products extends Table {
   RealColumn get taxRate => real().withDefault(const Constant(0.18))();
   TextColumn get unit => text().withDefault(const Constant('unidad'))();
   TextColumn get categoryId => text().nullable()();
+  TextColumn get brand => text().nullable()();
+  TextColumn get subCategory => text().nullable()();
   TextColumn get imagePath => text().nullable()();
   TextColumn get businessId => text()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
@@ -92,6 +94,9 @@ class Invoices extends Table {
   TextColumn get ncfType => text().nullable()();
   TextColumn get customerTaxId => text().nullable()();
   
+  TextColumn get currency => text().withDefault(const Constant('DOP'))();
+  RealColumn get exchangeRate => real().withDefault(const Constant(1.0))();
+
   TextColumn get businessId => text()();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   DateTimeColumn get issuedAt => dateTime().withDefault(currentDateAndTime)();
@@ -134,6 +139,56 @@ class SyncQueue extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Quotes (Cotizaciones)
+class Quotes extends Table {
+  TextColumn get id => text()();
+  TextColumn get quoteNumber => text()();
+  TextColumn get customerId => text().nullable()();
+  TextColumn get customerName => text().nullable()();
+  // status: pending, converted, cancelled
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  RealColumn get subtotal => real().withDefault(const Constant(0.0))();
+  RealColumn get taxAmount => real().withDefault(const Constant(0.0))();
+  RealColumn get total => real().withDefault(const Constant(0.0))();
+  TextColumn get currency => text().withDefault(const Constant('DOP'))();
+  TextColumn get notes => text().nullable()();
+  TextColumn get businessId => text()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class QuoteItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get quoteId => text()();
+  TextColumn get productId => text()();
+  TextColumn get productName => text()();
+  RealColumn get unitPrice => real()();
+  IntColumn get quantity => integer().withDefault(const Constant(1))();
+  RealColumn get taxAmount => real().withDefault(const Constant(0.0))();
+  RealColumn get subtotal => real()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Suppliers (Proveedores)
+class Suppliers extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get rnc => text().nullable()();
+  TextColumn get phone => text().nullable()();
+  TextColumn get email => text().nullable()();
+  TextColumn get address => text().nullable()();
+  TextColumn get businessId => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // App settings & preferences
 class AppSettings extends Table {
   TextColumn get key => text()();
@@ -143,12 +198,27 @@ class AppSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+// Local Users & Roles
+class AppUsers extends Table {
+  TextColumn get id => text()();
+  TextColumn get email => text().unique()();
+  TextColumn get passwordHash => text()();
+  // role: admin, cashier
+  TextColumn get role => text().withDefault(const Constant('cashier'))();
+  TextColumn get businessId => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Expenses (Gastos/Egresos)
 class Expenses extends Table {
   TextColumn get id => text()();
   RealColumn get amount => real()();
   TextColumn get description => text()();
   TextColumn get category => text()();
+  TextColumn get supplierId => text().nullable()();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   TextColumn get businessId => text()();
   TextColumn get status => text().withDefault(const Constant('paid'))(); // paid, pending

@@ -11,6 +11,8 @@ import '../../features/customers/customers_screen.dart';
 import '../../features/customers/customer_form_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/ncf_settings_screen.dart';
+import '../../features/settings/branch_management_screen.dart';
+import '../../features/settings/user_management_screen.dart';
 import '../../features/platform_admin/platform_admin_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
@@ -18,6 +20,10 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/expenses/expenses_screen.dart';
 import '../../features/expenses/expense_form_screen.dart';
 import '../../features/reports/reports_screen.dart';
+import 'package:vendepro/features/quotes/quote_list_screen.dart';
+import 'package:vendepro/features/quotes/quote_create_screen.dart';
+import 'package:vendepro/features/quotes/quote_detail_screen.dart';
+import 'package:vendepro/features/suppliers/suppliers_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
@@ -29,8 +35,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
+      final isAuth = ref.watch(isLoggedInProvider);
       final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
-      final isAuth = authState.valueOrNull != null;
       final isLoggingIn = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
       final isOnboarding = state.matchedLocation == '/onboarding';
@@ -141,6 +147,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: '/quotes',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: QuoteListScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (context, state) => const QuoteCreateScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => QuoteDetailScreen(quoteId: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/suppliers',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SuppliersScreen(),
+            ),
+          ),
+          GoRoute(
             path: '/reports',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ReportsScreen(),
@@ -155,6 +183,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'ncf',
                 builder: (context, state) => const NcfSettingsScreen(),
+              ),
+              GoRoute(
+                path: 'branches',
+                builder: (context, state) => const BranchManagementScreen(),
+              ),
+              GoRoute(
+                path: 'users',
+                builder: (context, state) => const UserManagementScreen(),
               ),
             ],
           ),

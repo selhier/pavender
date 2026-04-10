@@ -72,17 +72,6 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
         updatedAt: drift.Value(DateTime.now()),
       ));
 
-      await syncService.enqueueChange(
-        entity: 'customers',
-        entityId: id,
-        operation: widget.customerId == null ? 'create' : 'update',
-        data: {
-          'name': _name.text,
-          'phone': _phone.text,
-          'email': _email.text,
-          'businessId': bId,
-        },
-      );
       if (mounted) context.pop();
     } finally {
       if (mounted) setState(() => _isLoading = false);
