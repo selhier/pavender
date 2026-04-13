@@ -15,8 +15,7 @@ class CustomerFormScreen extends ConsumerStatefulWidget {
   const CustomerFormScreen({super.key, this.customerId});
 
   @override
-  ConsumerState<CustomerFormScreen> createState() =>
-      _CustomerFormScreenState();
+  ConsumerState<CustomerFormScreen> createState() => _CustomerFormScreenState();
 }
 
 class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
@@ -60,14 +59,11 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       await db.customersDao.upsert(CustomersCompanion(
         id: drift.Value(id),
         name: drift.Value(_name.text.trim()),
-        phone: drift.Value(
-            _phone.text.isEmpty ? null : _phone.text.trim()),
-        email: drift.Value(
-            _email.text.isEmpty ? null : _email.text.trim()),
-        address: drift.Value(
-            _address.text.isEmpty ? null : _address.text.trim()),
-        taxId: drift.Value(
-            _taxId.text.isEmpty ? null : _taxId.text.trim()),
+        phone: drift.Value(_phone.text.isEmpty ? null : _phone.text.trim()),
+        email: drift.Value(_email.text.isEmpty ? null : _email.text.trim()),
+        address:
+            drift.Value(_address.text.isEmpty ? null : _address.text.trim()),
+        taxId: drift.Value(_taxId.text.isEmpty ? null : _taxId.text.trim()),
         businessId: drift.Value(bId),
         updatedAt: drift.Value(DateTime.now()),
       ));
@@ -100,7 +96,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
               Center(
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundColor: AppColors.primary.withOpacity(0.15),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                   child: const Icon(Icons.person_rounded,
                       color: AppColors.primary, size: 40),
                 ),
@@ -125,8 +121,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
               TextFormField(
                 controller: _email,
                 decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined)),
+                    labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 12),
@@ -141,9 +136,11 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
               TextFormField(
                 controller: _taxId,
                 decoration: InputDecoration(
-                    labelText: _taxId.text.length <= 9 ? 'RNC (9 dígitos)' : 'Cédula (11 dígitos)',
-                    prefixIcon: const Icon(Icons.badge_outlined),
-                    helperText: 'Validación para Rep. Dominicana',
+                  labelText: _taxId.text.length <= 9
+                      ? 'RNC (9 dígitos)'
+                      : 'Cédula (11 dígitos)',
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                  helperText: 'Validación para Rep. Dominicana',
                 ),
                 onChanged: (v) => setState(() {}),
                 validator: (v) {

@@ -245,3 +245,70 @@ class NcfSequences extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+// Cash Drawer Sessions (Apertura y Cierre de turno)
+class CashSessions extends Table {
+  TextColumn get id => text()();
+  TextColumn get businessId => text()();
+  TextColumn get cashierId => text()();
+  
+  DateTimeColumn get openedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get closedAt => dateTime().nullable()();
+  
+  RealColumn get startingCash => real().withDefault(const Constant(0.0))();
+  RealColumn get calculatedEndingCash => real().nullable()();
+  RealColumn get actualEndingCash => real().nullable()();
+  RealColumn get difference => real().nullable()();
+  
+  TextColumn get notes => text().nullable()();
+  
+  // open, closed
+  TextColumn get status => text().withDefault(const Constant('open'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Invoice Payments (Abonos parciales a facturas a crédito)
+class InvoicePayments extends Table {
+  TextColumn get id => text()();
+  TextColumn get invoiceId => text()();
+  TextColumn get businessId => text()();
+  RealColumn get amount => real()();
+  TextColumn get method => text().withDefault(const Constant('cash'))(); // cash, card, transfer
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get paidAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Purchase Orders (Órdenes de Compra a Proveedores)
+class PurchaseOrders extends Table {
+  TextColumn get id => text()();
+  TextColumn get businessId => text()();
+  TextColumn get supplierId => text().nullable()();
+  TextColumn get supplierName => text()();
+  TextColumn get status => text().withDefault(const Constant('draft'))(); // draft, sent, received
+  RealColumn get total => real().withDefault(const Constant(0.0))();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get expectedDate => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Purchase Order Items
+class PurchaseOrderItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get orderId => text()();
+  TextColumn get productId => text().nullable()();
+  TextColumn get productName => text()();
+  IntColumn get quantity => integer()();
+  RealColumn get unitCost => real()();
+  RealColumn get subtotal => real()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

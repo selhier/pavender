@@ -106,7 +106,7 @@ class UserManagementScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: role,
+                initialValue: role,
                 decoration: const InputDecoration(labelText: 'Rol'),
                 items: const [
                   DropdownMenuItem(value: 'admin', child: Text('Administrador')),

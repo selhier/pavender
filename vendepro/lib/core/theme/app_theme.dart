@@ -76,14 +76,24 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: Colors.white,
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       textTheme: _textTheme(Colors.white),
       cardTheme: CardThemeData(
         color: AppColors.darkCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.darkBorder, width: 1),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppColors.darkBorder.withValues(alpha: 0.5), width: 1),
         ),
+        shadowColor: Colors.black.withValues(alpha: 0.2),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.darkBg,
@@ -131,7 +141,7 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,
-        indicatorColor: AppColors.primary.withOpacity(0.2),
+        indicatorColor: AppColors.primary.withValues(alpha: 0.2),
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -160,14 +170,24 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: Color(0xFF111827),
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       textTheme: _textTheme(const Color(0xFF111827)),
       cardTheme: CardThemeData(
         color: AppColors.lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: AppColors.lightBorder, width: 1),
         ),
+        shadowColor: AppColors.primary.withValues(alpha: 0.05),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.lightBg,
@@ -235,7 +255,7 @@ class AppTheme {
           fontSize: 14, fontWeight: FontWeight.w400, color: color),
       bodySmall: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w400,
-          color: color.withOpacity(0.7)),
+          color: color.withValues(alpha: 0.7)),
       labelLarge: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w600, color: color),
       labelMedium: GoogleFonts.inter(

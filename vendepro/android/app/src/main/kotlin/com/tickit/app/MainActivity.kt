@@ -1,4 +1,4 @@
-package com.vendepro.vendepro
+package com.tickit.app
 
 import io.flutter.embedding.android.FlutterActivity
 

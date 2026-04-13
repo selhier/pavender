@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/database/app_database.dart';
 import '../theme/app_theme.dart';
-import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 
 class MainScaffold extends ConsumerWidget {
@@ -54,6 +53,9 @@ class MainScaffold extends ConsumerWidget {
     final role = ref.watch(userRoleProvider);
     final businessInfo = ref.watch(businessProvider).valueOrNull;
     final localUser = ref.watch(localUserProvider);
+    final lowStock = ref.watch(lowStockProvider);
+    final lowStockCount = lowStock.valueOrNull?.length ?? 0;
+    final activeSession = ref.watch(activeSessionProvider).valueOrNull;
     final allItems = _allNavItems(role);
     
     // For mobile bottom bar, we only show primary items that are allowed for the role
@@ -104,7 +106,15 @@ class MainScaffold extends ConsumerWidget {
               ],
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: child),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: KeyedSubtree(
+                  key: ValueKey(GoRouterState.of(context).uri.path.split('/')[1]),
+                  child: child,
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -121,6 +131,31 @@ class MainScaffold extends ConsumerWidget {
           ),
         ),
         actions: [
+          if (lowStockCount > 0)
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  onPressed: () => context.go('/inventory'),
+                  tooltip: '$lowStockCount producto(s) con stock bajo',
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                        color: AppColors.error, shape: BoxShape.circle),
+                    child: Text('$lowStockCount',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          _CashStatusBadge(isOpen: activeSession != null),
           _UserAvatar(user: localUser, small: true),
         ],
       ),
@@ -143,7 +178,7 @@ class MainScaffold extends ConsumerWidget {
                 ),
                 Text(
                   localUser?.email ?? 'Administrador',
-                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                 ),
               ],
             ),
@@ -173,11 +208,57 @@ class MainScaffold extends ConsumerWidget {
         },
         selectedIndex: _selectedIndex(context, drawerItems) == -1 ? null : _selectedIndex(context, drawerItems),
       ),
-      body: child,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: KeyedSubtree(
+          key: ValueKey(GoRouterState.of(context).uri.path.split('/')[1]),
+          child: child,
+        ),
+      ),
       bottomNavigationBar: _BottomNav(
         selectedIndex: selectedIdxBottom,
         onTap: (i) => context.go(bottomItems[i].path),
         items: bottomItems,
+      ),
+    );
+  }
+}
+
+class _CashStatusBadge extends StatelessWidget {
+  final bool isOpen;
+  const _CashStatusBadge({required this.isOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isOpen ? AppColors.success : Colors.grey).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: (isOpen ? AppColors.success : Colors.grey).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: isOpen ? AppColors.success : Colors.grey,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isOpen ? 'Caja Abierta' : 'Caja Cerrada',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isOpen ? AppColors.success : Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -269,44 +350,23 @@ class _SideNavRail extends StatelessWidget {
             final selected = e.key == selectedIndex;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  gradient: selected ? AppColors.gradient : null,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: Icon(
-                    e.value.icon,
-                    color: selected ? Colors.white : Colors.grey,
-                    size: 22,
-                  ),
-                  title: Text(
-                    e.value.label,
-                    style: TextStyle(
-                      color: selected ? Colors.white : Colors.grey,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.w400,
-                      fontSize: 14,
-                    ),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onTap: () => onTap(e.key),
-                ),
+              child: _HoverMenuTile(
+                selected: selected,
+                icon: e.value.icon,
+                label: e.value.label,
+                onTap: () => onTap(e.key),
               ),
             );
           }),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: ListTile(
-              leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-              title: const Text('Cerrar Sesión', 
-                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 14)),
+            child: _HoverMenuTile(
+              selected: false,
+              icon: Icons.logout_rounded,
+              label: 'Cerrar Sesión',
+              isError: true,
               onTap: onLogout,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 16),
@@ -340,7 +400,7 @@ class _BottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -399,6 +459,65 @@ class _BottomNav extends StatelessWidget {
               );
             }).toList(),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverMenuTile extends StatefulWidget {
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isError;
+
+  const _HoverMenuTile({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isError = false,
+  });
+
+  @override
+  State<_HoverMenuTile> createState() => _HoverMenuTileState();
+}
+
+class _HoverMenuTileState extends State<_HoverMenuTile> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isError 
+      ? AppColors.error 
+      : (widget.selected ? Colors.white : Colors.grey);
+      
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          gradient: widget.selected ? AppColors.gradient : null,
+          color: !widget.selected && _isHovered 
+            ? (widget.isError ? AppColors.error.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1)) 
+            : null,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          leading: Icon(widget.icon, color: color, size: 22),
+          title: Text(
+            widget.label,
+            style: TextStyle(
+              color: color,
+              fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400,
+              fontSize: 14,
+            ),
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onTap: widget.onTap,
         ),
       ),
     );

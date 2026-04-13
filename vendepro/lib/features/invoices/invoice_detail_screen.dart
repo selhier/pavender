@@ -2,10 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -110,6 +106,15 @@ class InvoiceDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    if (invoice.paymentMethod == 'credit' || invoice.status == 'issued') ...[
+                      const SizedBox(height: 12),
+                      GradientButton(
+                        label: 'Registrar Abono',
+                        icon: Icons.payments_rounded,
+                        gradient: AppColors.gradientWarning,
+                        onTap: () => context.push('/invoices/${invoiceId}/payments'),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -121,27 +126,52 @@ class InvoiceDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _handlePrint(BuildContext context, WidgetRef ref, {required bool isTicket}) async {
-    final db = ref.read(databaseProvider);
-    final bId = ref.read(currentBusinessIdProvider);
-    final invoice = await db.invoicesDao.getById(invoiceId);
-    final items = await db.invoicesDao.getItems(invoiceId);
-    final business = await db.businessDao.getBusiness(bId);
-
-    if (invoice == null) return;
-
-    final pdfService = PDFGeneratorService();
-    if (isTicket) {
-      await pdfService.generateInvoiceTicket(
-        invoice: invoice,
-        items: items,
-        business: business,
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 16),
+              Text('Preparando documento...'),
+            ],
+          ),
+          backgroundColor: AppColors.primary,
+          duration: Duration(seconds: 1),
+        ),
       );
-    } else {
-      await pdfService.generateInvoiceStandard(
-        invoice: invoice,
-        items: items,
-        business: business,
-      );
+
+      final db = ref.read(databaseProvider);
+      final bId = ref.read(currentBusinessIdProvider);
+      final invoice = await db.invoicesDao.getById(invoiceId);
+      final items = await db.invoicesDao.getItems(invoiceId);
+      final business = await db.businessDao.getBusiness(bId);
+
+      if (invoice == null) return;
+
+      final pdfService = PDFGeneratorService();
+      if (isTicket) {
+        await pdfService.generateInvoiceTicket(
+          invoice: invoice,
+          items: items,
+          business: business,
+        );
+      } else {
+        await pdfService.generateInvoiceStandard(
+          invoice: invoice,
+          items: items,
+          business: business,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar documento: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 }
@@ -178,7 +208,7 @@ class _InvoiceHeader extends StatelessWidget {
                   Text(
                     business?.name ?? 'Mi Negocio',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.8), fontSize: 14),
+                        color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                   ),
                 ],
               ),

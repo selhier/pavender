@@ -242,25 +242,22 @@ class _KpiRow extends StatelessWidget {
     ];
 
     if (isWide) {
-      return SizedBox(
-        height: 160,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: cards
-                .map((c) => Container(
-                      width: 220,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: c,
-                    ))
-                .toList(),
-          ),
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 260,
+          mainAxisExtent: 180,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
         ),
+        itemCount: cards.length,
+        itemBuilder: (context, index) => cards[index],
       );
     }
 
     return SizedBox(
-      height: 160,
+      height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
@@ -291,12 +288,13 @@ class _QuickActions extends StatelessWidget {
           color: AppColors.success,
           onTap: () => context.push('/customers/new')),
       _QuickAction(
-          icon: Icons.bar_chart_rounded,
-          label: 'Reportes',
+          icon: Icons.point_of_sale_rounded,
+          label: 'Turno\nde Caja',
           color: AppColors.secondary,
-          onTap: () => context.go('/invoices')),
+          onTap: () => context.push('/dashboard/shift')),
     ];
 
+    final isWide = MediaQuery.of(context).size.width >= 768;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -308,7 +306,9 @@ class _QuickActions extends StatelessWidget {
           children: actions.asMap().entries.map((e) {
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: e.key < actions.length - 1 ? 8 : 0),
+                padding: EdgeInsets.only(
+                  right: e.key < actions.length - 1 ? (isWide ? 24 : 8) : 0,
+                ),
                 child: e.value,
               ),
             );
@@ -334,32 +334,35 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2),
+              ),
+            ],
+          ),
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9));
+      ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9)),
+    );
   }
 }
 
@@ -421,7 +424,7 @@ class _SalesChart extends StatelessWidget {
                 children: [
                    _ChartLegend(label: 'Hoy', color: AppColors.primary),
                    const SizedBox(width: 12),
-                   _ChartLegend(label: 'Prev.', color: Colors.grey.withOpacity(0.5)),
+                   _ChartLegend(label: 'Prev.', color: Colors.grey.withValues(alpha: 0.5)),
                 ],
               ),
             ],
@@ -466,7 +469,7 @@ class _SalesChart extends StatelessWidget {
                   LineChartBarData(
                     spots: previousWeekSpots,
                     isCurved: true,
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(alpha: 0.3),
                     barWidth: 2,
                     dashArray: [5, 5],
                     dotData: const FlDotData(show: false),
@@ -483,8 +486,8 @@ class _SalesChart extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppColors.primary.withOpacity(0.2),
-                          AppColors.primary.withOpacity(0.0),
+                          AppColors.primary.withValues(alpha: 0.2),
+                          AppColors.primary.withValues(alpha: 0.0),
                         ],
                       ),
                     ),
@@ -522,41 +525,44 @@ class _InvoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.receipt_rounded,
-              color: AppColors.primary, size: 22),
-        ),
-        title: Text(
-          invoice.invoiceNumber ?? '---',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          invoice.customerName ?? 'Cliente general',
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '\$${invoice.total.toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 15),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            StatusBadge(status: invoice.status),
-          ],
+            child: const Icon(Icons.receipt_rounded,
+                color: AppColors.primary, size: 22),
+          ),
+          title: Text(
+            invoice.invoiceNumber ?? '---',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            invoice.customerName ?? 'Cliente general',
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '\$${invoice.total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+              StatusBadge(status: invoice.status),
+            ],
+          ),
+          onTap: () => context.push('/invoices/${invoice.id}'),
         ),
-        onTap: () => context.push('/invoices/${invoice.id}'),
       ),
     );
   }
@@ -579,9 +585,9 @@ class _FiscalAlert extends StatelessWidget {
       margin: const EdgeInsets.only(top: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.1),
+        color: AppColors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,9 +636,9 @@ class _LowStockAlert extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.1),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,21 +681,24 @@ class _SyncIndicatorButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncService = ref.watch(syncServiceProvider);
-    return IconButton(
-      icon: const Icon(Icons.sync_rounded),
-      tooltip: 'Sincronizar',
-      onPressed: () async {
-        await syncService.syncPendingChanges();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sincronización completada'),
-              backgroundColor: AppColors.success,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      },
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: IconButton(
+        icon: const Icon(Icons.sync_rounded),
+        tooltip: 'Sincronizar',
+        onPressed: () async {
+          await syncService.syncPendingChanges();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sincronización completada'),
+                backgroundColor: AppColors.success,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      ),
     );
   }
 }

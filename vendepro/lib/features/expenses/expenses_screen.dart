@@ -1,5 +1,6 @@
 // lib/features/expenses/expenses_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -77,7 +78,7 @@ class ExpensesScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.error.withOpacity(0.1),
+                            color: AppColors.error.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.money_off_rounded, color: AppColors.error, size: 20),
@@ -92,7 +93,7 @@ class ExpensesScreen extends ConsumerWidget {
                           style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
-                    );
+                    ).animate(delay: (index * 40).ms).fadeIn().slideX(begin: 0.05);
                   },
                 ),
               ),

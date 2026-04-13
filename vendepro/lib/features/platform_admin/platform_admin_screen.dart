@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/shared_widgets.dart';
 import '../../core/providers/providers.dart';
 
 class PlatformAdminScreen extends ConsumerWidget {
@@ -108,7 +107,7 @@ class PlatformAdminScreen extends ConsumerWidget {
                               Text(
                                 'Resumen de todos los negocios activos',
                                 style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     fontSize: 13),
                               ),
                               const SizedBox(height: 16),
@@ -274,7 +273,7 @@ class _BusinessCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -371,9 +370,10 @@ class _AdminStat extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-              color: Colors.white.withOpacity(0.8), fontSize: 11),
+              color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
         ),
       ],
     );
   }
 }
+

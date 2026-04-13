@@ -54,12 +54,20 @@ class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin 
   Future<List<Category>> getCategories(String businessId) =>
       (select(categories)..where((c) => c.businessId.equals(businessId))).get();
 
-  Future<void> updateStock(String productId, int newStock) =>
-      (update(products)..where((p) => p.id.equals(productId)))
+  Future<void> updateStock(String productId, int newStock) async {
+    await (update(products)..where((p) => p.id.equals(productId)))
           .write(ProductsCompanion(
         stock: Value(newStock),
         updatedAt: Value(DateTime.now()),
       ));
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'prod_stock_${productId}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'products',
+      entityId: productId,
+      operation: 'update',
+      data: jsonEncode({'id': productId, 'stock': newStock, 'updatedAt': DateTime.now().toIso8601String()}),
+    ));
+  }
 
   Stream<List<Product>> searchProducts(String businessId, String query) =>
       (select(products)
@@ -364,8 +372,27 @@ class NcfDao extends DatabaseAccessor<AppDatabase> with _$NcfDaoMixin {
     await (update(ncfSequences)..where((s) => s.id.equals(seq.id)))
         .write(NcfSequencesCompanion(lastUsed: Value(nextVal)));
 
+    // Warning if running low (less than 10 left)
+    const int lowThreshold = 10;
+    final remaining = seq.to - nextVal;
+    if (remaining < lowThreshold) {
+      // We could return a tuple or use a separate stream, but for simplicity 
+      // let's just log it or handle it in the UI by checking remaining elsewhere.
+    }
+
     // Format B0100000001
     return '${seq.prefix}${seq.type}${nextVal.toString().padLeft(8, '0')}';
+  }
+
+  Future<int> getRemainingNCF(String businessId, String type) async {
+    final seq = await (select(ncfSequences)
+          ..where((s) =>
+              s.businessId.equals(businessId) &
+              s.type.equals(type) &
+              s.isActive.equals(true)))
+        .getSingleOrNull();
+    if (seq == null) return 0;
+    return seq.to - seq.lastUsed;
   }
 }
 
@@ -476,5 +503,90 @@ class AuthDao extends DatabaseAccessor<AppDatabase> with _$AuthDaoMixin {
       operation: 'insert',
       data: jsonEncode(_mapCompanion(user)),
     ));
+  }
+}
+
+@DriftAccessor(tables: [CashSessions])
+class CashSessionsDao extends DatabaseAccessor<AppDatabase> with _$CashSessionsDaoMixin {
+  CashSessionsDao(super.db);
+
+  Future<CashSession?> getActiveSession(String businessId, String cashierId) =>
+      (select(cashSessions)
+            ..where((s) => 
+                s.businessId.equals(businessId) & 
+                s.cashierId.equals(cashierId) & 
+                s.status.equals('open')))
+          .getSingleOrNull();
+
+  Stream<CashSession?> watchActiveSession(String businessId, String cashierId) =>
+      (select(cashSessions)
+            ..where((s) => 
+                s.businessId.equals(businessId) & 
+                s.cashierId.equals(cashierId) & 
+                s.status.equals('open')))
+          .watchSingleOrNull();
+
+  Future<void> openSession(CashSessionsCompanion session) async {
+    await into(cashSessions).insert(session);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'session_${session.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'cash_sessions',
+      entityId: session.id.value,
+      operation: 'insert',
+      data: jsonEncode(_mapCompanion(session)),
+    ));
+  }
+
+  Future<void> closeSession(CashSessionsCompanion session) async {
+    await update(cashSessions).replace(session);
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'session_${session.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'cash_sessions',
+      entityId: session.id.value,
+      operation: 'update',
+      data: jsonEncode(_mapCompanion(session)),
+    ));
+  }
+}
+
+@DriftAccessor(tables: [PurchaseOrders, PurchaseOrderItems, Products])
+class PurchaseOrdersDao extends DatabaseAccessor<AppDatabase> with _$PurchaseOrdersDaoMixin {
+  PurchaseOrdersDao(super.db);
+
+  Stream<List<PurchaseOrder>> watchAll(String businessId) =>
+      (select(purchaseOrders)
+            ..where((o) => o.businessId.equals(businessId))
+            ..orderBy([(o) => OrderingTerm.desc(o.createdAt)]))
+          .watch();
+
+  Future<List<PurchaseOrderItem>> getItems(String orderId) =>
+      (select(purchaseOrderItems)..where((i) => i.orderId.equals(orderId))).get();
+
+  Future<void> updateStatus(String id, String status) async {
+    await (update(purchaseOrders)..where((o) => o.id.equals(id)))
+        .write(PurchaseOrdersCompanion(status: Value(status)));
+
+    await db.syncDao.enqueue(SyncQueueCompanion.insert(
+      id: 'po_status_${id}_${DateTime.now().millisecondsSinceEpoch}',
+      entity: 'purchase_orders',
+      entityId: id,
+      operation: 'update',
+      data: jsonEncode({'id': id, 'status': status, 'updatedAt': DateTime.now().toIso8601String()}),
+    ));
+  }
+
+  Future<void> receiveOrder(String orderId) async {
+    await transaction(() async {
+      final items = await getItems(orderId);
+      for (final item in items) {
+        if (item.productId != null) {
+          final p = await db.productsDao.getById(item.productId!);
+          if (p != null) {
+            await db.productsDao.updateStock(p.id, p.stock + item.quantity);
+          }
+        }
+      }
+      await updateStatus(orderId, 'received');
+    });
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/dashboard/cash_shift_screen.dart';
 import '../../features/inventory/inventory_screen.dart';
 import '../../features/inventory/product_form_screen.dart';
 import '../../features/invoices/invoice_list_screen.dart';
@@ -13,6 +14,7 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/settings/ncf_settings_screen.dart';
 import '../../features/settings/branch_management_screen.dart';
 import '../../features/settings/user_management_screen.dart';
+import '../../features/settings/printer_settings_screen.dart';
 import '../../features/platform_admin/platform_admin_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
@@ -23,6 +25,9 @@ import '../../features/reports/reports_screen.dart';
 import 'package:vendepro/features/quotes/quote_list_screen.dart';
 import 'package:vendepro/features/quotes/quote_create_screen.dart';
 import 'package:vendepro/features/quotes/quote_detail_screen.dart';
+import '../../features/invoices/invoice_payments_screen.dart';
+import '../../features/suppliers/purchase_order_screen.dart';
+import '../../features/suppliers/purchase_order_list_screen.dart';
 import 'package:vendepro/features/suppliers/suppliers_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../providers/auth_provider.dart';
@@ -82,6 +87,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: DashboardScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'shift',
+                builder: (context, state) => const CashShiftScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/inventory',
@@ -114,6 +125,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (context, state) =>
                     InvoiceDetailScreen(invoiceId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: ':id/payments',
+                builder: (context, state) =>
+                    InvoicePaymentsScreen(invoiceId: state.pathParameters['id']!),
               ),
             ],
           ),
@@ -167,6 +183,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SuppliersScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'orders',
+                builder: (context, state) => const PurchaseOrderListScreen(),
+              ),
+              GoRoute(
+                path: 'orders/new',
+                builder: (context, state) => const PurchaseOrderScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/reports',
@@ -191,6 +217,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'users',
                 builder: (context, state) => const UserManagementScreen(),
+              ),
+              GoRoute(
+                path: 'printer',
+                builder: (context, state) => const PrinterSettingsScreen(),
               ),
             ],
           ),

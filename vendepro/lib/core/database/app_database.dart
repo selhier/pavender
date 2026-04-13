@@ -22,6 +22,10 @@ part 'app_database.g.dart';
     QuoteItems,
     Suppliers,
     AppUsers,
+    CashSessions,
+    InvoicePayments,
+    PurchaseOrders,
+    PurchaseOrderItems,
   ],
   daos: [
     ProductsDao,
@@ -34,13 +38,15 @@ part 'app_database.g.dart';
     QuotesDao,
     SuppliersDao,
     AuthDao,
+    CashSessionsDao,
+    PurchaseOrdersDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -97,6 +103,14 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(invoices, invoices.currency);
             await m.addColumn(invoices, invoices.exchangeRate);
             await m.addColumn(expenses, expenses.supplierId);
+          }
+          if (from < 7) {
+            await m.createTable(cashSessions);
+          }
+          if (from < 8) {
+            await m.createTable(invoicePayments);
+            await m.createTable(purchaseOrders);
+            await m.createTable(purchaseOrderItems);
           }
         },
       );

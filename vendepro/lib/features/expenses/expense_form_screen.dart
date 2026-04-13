@@ -49,7 +49,6 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
     try {
       final db = ref.read(databaseProvider);
-      final syncService = ref.read(syncServiceProvider);
       final bId = ref.read(currentBusinessIdProvider);
       final id = const Uuid().v4();
       final now = DateTime.now();
@@ -91,9 +90,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.05),
+                  color: AppColors.error.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
@@ -129,7 +128,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(
                   labelText: 'Categoría',
                   prefixIcon: Icon(Icons.category_rounded),
@@ -142,7 +141,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 builder: (context, ref, _) {
                   final suppliers = ref.watch(suppliersStreamProvider);
                   return DropdownButtonFormField<Supplier?>(
-                    value: _selectedSupplier,
+                    initialValue: _selectedSupplier,
                     decoration: const InputDecoration(
                       labelText: 'Proveedor (Opcional)',
                       prefixIcon: Icon(Icons.business_rounded),

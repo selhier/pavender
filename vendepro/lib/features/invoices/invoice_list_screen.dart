@@ -18,6 +18,7 @@ class InvoiceListScreen extends ConsumerStatefulWidget {
 class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
   String _filterStatus = 'all';
   String _search = '';
+  DateTimeRange? _dateRange;
 
   static const _statuses = [
     ('all', 'Todas'),
@@ -58,7 +59,7 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                           onSelected: (v) =>
                               setState(() => _filterStatus = s.$1),
                           selectedColor:
-                              AppColors.primary.withOpacity(0.2),
+                              AppColors.primary.withValues(alpha: 0.2),
                           checkmarkColor: AppColors.primary,
                           labelStyle: TextStyle(
                             color: _filterStatus == s.$1
@@ -73,14 +74,71 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                   .toList(),
             ),
           ),
-          // Search bar
+          // Search & Date
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AppSearchBar(
-              hint: 'Buscar por número o cliente...',
-              onChanged: (v) => setState(() => _search = v),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchBar(
+                    hint: 'Buscar por número o cliente...',
+                    onChanged: (v) => setState(() => _search = v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _dateRange != null ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _dateRange != null ? AppColors.primary.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.date_range_rounded, color: _dateRange != null ? AppColors.primary : Colors.grey),
+                    onPressed: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2023),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        initialDateRange: _dateRange,
+                        builder: (context, child) => Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: Theme.of(context).colorScheme.copyWith(
+                              primary: AppColors.primary,
+                              onPrimary: Colors.white,
+                              surface: AppColors.darkCard,
+                              onSurface: Colors.white,
+                            ),
+                          ),
+                          child: child!,
+                        ),
+                      );
+                      if (picked != null) setState(() => _dateRange = picked);
+                    },
+                    tooltip: 'Filtrar por fecha',
+                  ),
+                ),
+                if (_dateRange != null)
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.error),
+                    onPressed: () => setState(() => _dateRange = null),
+                  ),
+              ],
             ),
           ),
+          if (_dateRange != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${DateFormat('dd/MM/yy').format(_dateRange!.start)} - ${DateFormat('dd/MM/yy').format(_dateRange!.end)}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           // List
           Expanded(
@@ -107,12 +165,23 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                       .toList();
                 }
 
+                if (_dateRange != null) {
+                  filtered = filtered.where((i) {
+                    final date = i.createdAt;
+                    return date.isAfter(_dateRange!.start) && 
+                           date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+                  }).toList();
+                }
+
                 if (filtered.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Sin facturas',
-                    subtitle: 'Crea tu primera factura',
-                    actionLabel: 'Crear Factura',
+                  return IllustrationEmptyState(
+                    primaryIcon: Icons.receipt_long_rounded,
+                    secondaryIcon: Icons.search_off_rounded,
+                    title: 'No hay facturas',
+                    subtitle: _search.isNotEmpty || _dateRange != null 
+                        ? 'No se encontraron resultados para los filtros aplicados.'
+                        : 'Aún no has registrado ninguna factura en este periodo.',
+                    actionLabel: 'Nueva Factura',
                     onAction: () => context.push('/invoices/new'),
                   );
                 }
@@ -158,7 +227,7 @@ class _InvoiceCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.receipt_long_rounded,

@@ -38,3 +38,12 @@ mixin _$SuppliersDaoMixin on DatabaseAccessor<AppDatabase> {
 mixin _$AuthDaoMixin on DatabaseAccessor<AppDatabase> {
   $AppUsersTable get appUsers => attachedDatabase.appUsers;
 }
+mixin _$CashSessionsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $CashSessionsTable get cashSessions => attachedDatabase.cashSessions;
+}
+mixin _$PurchaseOrdersDaoMixin on DatabaseAccessor<AppDatabase> {
+  $PurchaseOrdersTable get purchaseOrders => attachedDatabase.purchaseOrders;
+  $PurchaseOrderItemsTable get purchaseOrderItems =>
+      attachedDatabase.purchaseOrderItems;
+  $ProductsTable get products => attachedDatabase.products;
+}

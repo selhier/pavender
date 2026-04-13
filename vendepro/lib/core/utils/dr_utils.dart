@@ -1,4 +1,5 @@
 // lib/core/utils/dr_utils.dart
+import 'package:flutter/services.dart';
 
 class DRUtils {
   /// Validates a Dominican RNC (9 digits) or Cédula (11 digits)
@@ -75,4 +76,40 @@ class DRUtils {
     '15': 'Registro de Regímenes Especiales',
     '16': 'Comprobantes Gubernamentales',
   };
+}
+
+class DRTaxIdFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    var formatted = '';
+
+    if (text.length > 11) text = text.substring(0, 11);
+
+    if (text.length <= 9) {
+      // RNC: XXX-XXXXX-X
+      for (var i = 0; i < text.length; i++) {
+        formatted += text[i];
+        if (i == 2 || i == 7) {
+          if (i != text.length - 1) formatted += '-';
+        }
+      }
+    } else {
+      // Cédula: XXX-XXXXXXX-X
+      for (var i = 0; i < text.length; i++) {
+        formatted += text[i];
+        if (i == 2 || i == 9) {
+          if (i != text.length - 1) formatted += '-';
+        }
+      }
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
 }

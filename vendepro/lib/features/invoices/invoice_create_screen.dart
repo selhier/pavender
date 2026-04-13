@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
-import 'package:intl/intl.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -63,8 +62,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     double finalTotal = _subtotal + totalTaxAmount + fee;
     final isMobile = MediaQuery.of(context).size.width < 768;
 
+    final width = MediaQuery.of(context).size.width;
     Widget cartPanel = Container(
-      width: isMobile ? double.infinity : 280,
+      width: isMobile ? double.infinity : (width * 0.3).clamp(320.0, 450.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(left: BorderSide(color: Theme.of(context).dividerColor)),
@@ -93,6 +93,8 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                       onRemove: () => setState(() => _cart.removeAt(i)),
                       onQuantityChange: (q) =>
                           setState(() => _cart[i].quantity = q),
+                      onDiscountChange: (d) =>
+                          setState(() => _cart[i].discount = d),
                     ),
                   ),
           ),
@@ -114,7 +116,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _currency,
+                          initialValue: _currency,
                           decoration: const InputDecoration(
                             labelText: 'Moneda',
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -143,7 +145,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _paymentMethod,
+                    initialValue: _paymentMethod,
                     isExpanded: true,
                     decoration: const InputDecoration(
                         labelText: 'Método de pago',
@@ -159,7 +161,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
-                    value: _ncfType,
+                    initialValue: _ncfType,
                     isExpanded: true,
                     decoration: const InputDecoration(
                         labelText: 'Tipo de Comprobante (RD)',
@@ -235,11 +237,16 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
               icon: const Icon(Icons.qr_code_scanner_rounded,
                   color: AppColors.primary),
               onPressed: () async {
-                var res = await Navigator.push(
+                var res = await SimpleBarcodeScanner.scanBarcode(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const SimpleBarcodeScannerPage(),
+                  barcodeAppBar: const BarcodeAppBar(
+                    appBarTitle: 'Escanear Producto',
+                    centerTitle: false,
+                    enableBackButton: true,
+                    backButtonIcon: Icon(Icons.arrow_back_ios),
                   ),
+                  isShowFlashIcon: true,
+                  delayMillis: 500,
                 );
                 if (res is String && res != '-1') {
                   final p =
@@ -282,7 +289,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     color: inCart
-                        ? AppColors.primary.withOpacity(0.15)
+                        ? AppColors.primary.withValues(alpha: 0.15)
                         : Theme.of(context).cardTheme.color,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
@@ -454,7 +461,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     setState(() => _isLoading = true);
     try {
       final db = ref.read(databaseProvider);
-      final syncService = ref.read(syncServiceProvider);
       final bId = ref.read(currentBusinessIdProvider);
       final id = const Uuid().v4();
       final invoiceNum =
@@ -533,6 +539,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         notes: drift.Value(_notesCtrl.text.isEmpty ? null : _notesCtrl.text),
       ));
 
+      final List<String> lowStockItems = [];
       for (final item in _cart) {
         await db.invoicesDao.insertItem(InvoiceItemsCompanion(
           id: drift.Value(const Uuid().v4()),
@@ -541,18 +548,75 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
           productName: drift.Value(item.product.name as String),
           unitPrice: drift.Value(item.product.price as double),
           quantity: drift.Value(item.quantity),
+          discount: drift.Value(item.discount),
           taxAmount: drift.Value(item.itemTaxAmount),
           subtotal: drift.Value(item.subtotal),
         ));
         // Decrease stock
-        final newStock = (item.product.stock as int) - item.quantity;
+        final currentStock = item.product.stock as int;
+        final newStock = currentStock - item.quantity;
         await db.productsDao.updateStock(item.product.id as String,
             newStock < 0 ? 0 : newStock);
+            
+        // Check for low stock alert
+        final minStock = item.product.minStock as int? ?? 5;
+        if (newStock <= minStock) {
+          lowStockItems.add(item.product.name as String);
+        }
       }
 
       if (mounted) {
-        context.pop();
-        context.push('/invoices/$id');
+        if (lowStockItems.isNotEmpty) {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  const Text('Alerta de Stock Bajo'),
+                ],
+              ),
+              content: Text('Los siguientes productos han quedado bajo el mínimo y requieren reposición:\n\n• ${lowStockItems.join('\n• ')}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        if (mounted) {
+          // Check for low NCF alert if NCF was used
+          if (ncf != null && _ncfType != null) {
+            final remaining = await db.ncfDao.getRemainingNCF(bId, _ncfType!);
+            if (remaining < 10) {
+              await showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('NCF Agotándose'),
+                    ],
+                  ),
+                  content: Text('Atención: Solo quedan $remaining números disponibles en la secuencia de ${DRUtils.ncfTypes[_ncfType]}. Por favor, solicite una nueva secuencia pronto.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido')),
+                  ],
+                ),
+              );
+            }
+          }
+
+          if (mounted) {
+            context.pop();
+            context.push('/invoices/$id');
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -581,11 +645,13 @@ class _CartItemTile extends StatelessWidget {
   final _CartItem item;
   final VoidCallback onRemove;
   final ValueChanged<int> onQuantityChange;
+  final ValueChanged<double> onDiscountChange;
 
   const _CartItemTile({
     required this.item,
     required this.onRemove,
     required this.onQuantityChange,
+    required this.onDiscountChange,
   });
 
   @override
@@ -641,8 +707,58 @@ class _CartItemTile extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.local_offer_rounded, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                const Text('Desc:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () async {
+                    final res = await _showDiscountDialog(context, item.discount);
+                    if (res != null) onDiscountChange(res);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('${item.discount.toStringAsFixed(0)}%', 
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accent)),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<double?> _showDiscountDialog(BuildContext context, double current) async {
+    final ctrl = TextEditingController(text: current.toStringAsFixed(0));
+    return showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Aplicar Descuento'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Porcentaje (%)',
+            suffixText: '%',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, double.tryParse(ctrl.text) ?? 0.0),
+            child: const Text('Aplicar'),
+          ),
+        ],
       ),
     );
   }
@@ -661,7 +777,7 @@ class _QuantityBtn extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.15),
+          color: AppColors.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 16, color: AppColors.primary),
@@ -690,7 +806,7 @@ class _SummaryRow extends StatelessWidget {
                       isTotal ? FontWeight.w800 : FontWeight.w400,
                   color: isTotal 
                       ? AppColors.primary 
-                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
           Text(value,
               style: TextStyle(
                   fontSize: isTotal ? 16 : 13,
@@ -718,9 +834,9 @@ class _CustomerSelector extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: AppColors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [

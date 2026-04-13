@@ -130,7 +130,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
                     DropdownButtonFormField<String>(
-                      value: _period,
+                      initialValue: _period,
                       decoration: const InputDecoration(labelText: 'Período'),
                       items: ['Hoy', 'Esta Semana', 'Este Mes']
                           .map((p) => DropdownMenuItem(value: p, child: Text(p)))

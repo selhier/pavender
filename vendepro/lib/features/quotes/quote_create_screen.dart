@@ -117,11 +117,16 @@ class _QuoteCreateScreenState extends ConsumerState<QuoteCreateScreen> {
                       icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
                       onPressed: () async {
                         final products = productsAsync.value ?? [];
-                        var res = await Navigator.push(
+                        var res = await SimpleBarcodeScanner.scanBarcode(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const SimpleBarcodeScannerPage(),
+                          barcodeAppBar: const BarcodeAppBar(
+                            appBarTitle: 'Escanear Producto',
+                            centerTitle: false,
+                            enableBackButton: true,
+                            backButtonIcon: Icon(Icons.arrow_back_ios),
                           ),
+                          isShowFlashIcon: true,
+                          delayMillis: 500,
                         );
                         if (res is String && res != '-1') {
                           final p = products.where((p) => p.sku == res).firstOrNull;
@@ -250,7 +255,7 @@ class _CartHeader extends StatelessWidget {
           const Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           DropdownButtonFormField<Customer?>(
-            value: selectedCustomer,
+            initialValue: selectedCustomer,
             decoration: const InputDecoration(hintText: 'Seleccionar cliente'),
             items: [
               const DropdownMenuItem(value: null, child: Text('Cliente General')),
@@ -285,7 +290,7 @@ class _SummaryPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.05),
+        color: AppColors.primary.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(

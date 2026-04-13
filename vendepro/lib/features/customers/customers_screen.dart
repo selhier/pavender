@@ -73,7 +73,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                             horizontal: 16, vertical: 8),
                         leading: CircleAvatar(
                           backgroundColor:
-                              AppColors.primary.withOpacity(0.15),
+                              AppColors.primary.withValues(alpha: 0.15),
                           child: Text(
                             c.name[0].toUpperCase(),
                             style: const TextStyle(

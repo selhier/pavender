@@ -66,7 +66,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     setState(() => _isLoading = true);
     try {
       final db = ref.read(databaseProvider);
-      final syncService = ref.read(syncServiceProvider);
       final bId = ref.read(currentBusinessIdProvider);
       final id = widget.productId ?? const Uuid().v4();
 
@@ -92,6 +91,15 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       await db.productsDao.upsert(companion);
       
       if (mounted) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -110,99 +118,124 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             onPressed: () => context.pop(),
           ),
         ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              _buildSection('Información Básica', [
-                _buildField('Nombre del producto *', _name,
-                    validator: (v) =>
-                        v!.isEmpty ? 'Requerido' : null),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Expanded(child: _buildField('Código SKU', _sku)),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      onPressed: () async {
-                        var res = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SimpleBarcodeScannerPage(),
-                          ),
-                        );
-                        if (res is String && res != '-1') {
-                          setState(() => _sku.text = res);
-                        }
-                      },
-                      icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 28),
-                      tooltip: 'Escanear Código',
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  _buildSection('Información Básica', [
+                    _buildField(
+                      'Nombre del producto *', 
+                      _name,
+                      action: TextInputAction.next,
+                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _buildField('Marca', _brand)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildField('Sub-Categoría', _subCategory)),
-                ]),
-                const SizedBox(height: 12),
-                _buildField('Descripción', _description, maxLines: 3),
-              ]),
-              const SizedBox(height: 20),
-              _buildSection('Precios', [
-                Row(children: [
-                  Expanded(
-                    child: _buildField('Precio de Venta *', _price,
-                        prefix: '\$',
-                        keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            v!.isEmpty ? 'Requerido' : null),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Expanded(child: _buildField('Código SKU', _sku, action: TextInputAction.next)),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          onPressed: () async {
+                            var res = await SimpleBarcodeScanner.scanBarcode(
+                              context,
+                              barcodeAppBar: const BarcodeAppBar(
+                                appBarTitle: 'Escanear Código',
+                                centerTitle: false,
+                                enableBackButton: true,
+                                backButtonIcon: Icon(Icons.arrow_back_ios),
+                              ),
+                              isShowFlashIcon: true,
+                              delayMillis: 500,
+                            );
+                            if (res is String && res != '-1') {
+                              setState(() => _sku.text = res);
+                            }
+                          },
+                          icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 28),
+                          tooltip: 'Escanear Código',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      Expanded(child: _buildField('Marca', _brand, action: TextInputAction.next)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildField('Sub-Categoría', _subCategory, action: TextInputAction.next)),
+                    ]),
+                    const SizedBox(height: 12),
+                    _buildField('Descripción', _description, maxLines: 3, action: TextInputAction.next),
+                  ]),
+                  const SizedBox(height: 20),
+                  _buildSection('Precios', [
+                    Row(children: [
+                      Expanded(
+                        child: _buildField(
+                          'Precio de Venta *', 
+                          _price,
+                          prefix: '\$',
+                          keyboardType: TextInputType.number,
+                          action: TextInputAction.next,
+                          validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildField(
+                          'Costo', 
+                          _cost,
+                          prefix: '\$',
+                          action: TextInputAction.next,
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<double>(
+                      initialValue: _taxRate,
+                      decoration: const InputDecoration(
+                        labelText: 'Tasa de ITBIS',
+                        prefixIcon: Icon(Icons.percent_rounded, size: 20),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0.18, child: Text('ITBIS Normal (18%)')),
+                        DropdownMenuItem(value: 0.16, child: Text('ITBIS Reducido (16%)')),
+                        DropdownMenuItem(value: 0.08, child: Text('ITBIS Reducido (8%)')),
+                        DropdownMenuItem(value: 0.0, child: Text('Exento (0%)')),
+                      ],
+                      onChanged: (v) => setState(() => _taxRate = v!),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+                  _buildSection('Inventario', [
+                    Row(children: [
+                      Expanded(
+                        child: _buildField(
+                          'Stock actual *', 
+                          _stock,
+                          keyboardType: TextInputType.number,
+                          action: TextInputAction.next,
+                          validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildField('Costo', _cost,
-                        prefix: '\$',
-                        keyboardType: TextInputType.number),
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<double>(
-                  value: _taxRate,
-                  decoration: const InputDecoration(
-                    labelText: 'Tasa de ITBIS',
-                    prefixIcon: Icon(Icons.percent_rounded, size: 20),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 0.18, child: Text('ITBIS Normal (18%)')),
-                    DropdownMenuItem(value: 0.16, child: Text('ITBIS Reducido (16%)')),
-                    DropdownMenuItem(value: 0.08, child: Text('ITBIS Reducido (8%)')),
-                    DropdownMenuItem(value: 0.0, child: Text('Exento (0%)')),
-                  ],
-                  onChanged: (v) => setState(() => _taxRate = v!),
-                ),
-              ]),
-              const SizedBox(height: 20),
-              _buildSection('Inventario', [
-                Row(children: [
-                  Expanded(
-                    child: _buildField('Stock actual *', _stock,
-                        keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            v!.isEmpty ? 'Requerido' : null),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildField('Stock mínimo', _minStock,
-                        keyboardType: TextInputType.number),
+                    child: _buildField(
+                      'Stock mínimo', 
+                      _minStock,
+                      action: TextInputAction.done,
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _unit,
+                  initialValue: _unit,
                   decoration: const InputDecoration(labelText: 'Unidad'),
                   items: ['unidad', 'kg', 'g', 'lt', 'ml', 'caja', 'paquete']
                       .map((u) => DropdownMenuItem(value: u, child: Text(u)))
@@ -222,6 +255,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             ],
           ),
         ),
+      ),
+    ),
       ),
     );
   }
@@ -254,6 +289,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     TextEditingController ctrl, {
     String? prefix,
     TextInputType? keyboardType,
+    TextInputAction? action,
     String? Function(String?)? validator,
     int maxLines = 1,
   }) {
@@ -262,6 +298,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       keyboardType: keyboardType,
       maxLines: maxLines,
       validator: validator,
+      textInputAction: action,
       decoration: InputDecoration(
         labelText: label,
         prefixText: prefix,

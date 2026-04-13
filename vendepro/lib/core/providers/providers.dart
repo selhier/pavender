@@ -140,9 +140,18 @@ final totalReceivableProvider = FutureProvider.autoDispose((ref) async {
 final customerBalanceProvider = FutureProvider.family<double, String>((ref, customerId) async {
   final db = ref.watch(databaseProvider);
   final invoices = await db.invoicesDao.getByCustomer(customerId);
-  return invoices
-      .where((inv) => inv.status == 'issued')
-      .fold<double>(0, (sum, inv) => sum + inv.total);
+  final issuedInvoices = invoices.where((inv) => inv.status == 'issued' || inv.paymentMethod == 'credit').toList();
+  
+  double totalDebt = issuedInvoices.fold(0, (sum, inv) => sum + inv.total);
+  
+  // Fetch all payments for these invoices
+  double totalPaid = 0;
+  for (final inv in issuedInvoices) {
+    final payments = await (db.select(db.invoicePayments)..where((p) => p.invoiceId.equals(inv.id))).get();
+    totalPaid += payments.fold(0.0, (s, p) => s + p.amount);
+  }
+  
+  return (totalDebt - totalPaid).clamp(0, double.infinity);
 });
 
 // Total Accounts Payable
@@ -165,4 +174,19 @@ final suppliersStreamProvider = StreamProvider.autoDispose((ref) {
   final db = ref.watch(databaseProvider);
   final bId = ref.watch(currentBusinessIdProvider);
   return db.suppliersDao.watchAll(bId);
+});
+
+// Active Cash Session Provider
+final activeSessionProvider = StreamProvider.autoDispose<CashSession?>((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  final user = ref.watch(localUserProvider);
+  if (user == null) return Stream.value(null);
+  return db.cashSessionsDao.watchActiveSession(bId, user.id);
+});
+
+final purchaseOrdersStreamProvider = StreamProvider.autoDispose((ref) {
+  final db = ref.watch(databaseProvider);
+  final bId = ref.watch(currentBusinessIdProvider);
+  return db.purchaseOrdersDao.watchAll(bId);
 });

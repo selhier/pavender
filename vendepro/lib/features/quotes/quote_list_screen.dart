@@ -1,5 +1,6 @@
 // lib/features/quotes/quote_list_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -60,7 +61,7 @@ class QuoteListScreen extends ConsumerWidget {
                   ),
                   onTap: () => context.push('/quotes/${q.id}'),
                 ),
-              );
+              ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
             },
           );
         },
@@ -98,9 +99,9 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );

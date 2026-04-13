@@ -1,4 +1,3 @@
-// lib/features/settings/branch_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -6,7 +5,6 @@ import 'package:drift/drift.dart' as drift;
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/shared_widgets.dart';
 
 class BranchManagementScreen extends ConsumerWidget {
   const BranchManagementScreen({super.key});
@@ -134,3 +132,4 @@ class BranchManagementScreen extends ConsumerWidget {
     );
   }
 }
+

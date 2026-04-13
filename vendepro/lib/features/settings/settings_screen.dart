@@ -26,7 +26,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _currency = 'USD';
   String _currencySymbol = '\$';
   bool _isLoading = false;
-  bool _loaded = false;
   String? _logoBase64;
 
   // Secret admin tap counter
@@ -52,7 +51,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _currency = b.currency;
         _currencySymbol = b.currencySymbol;
         _logoBase64 = b.logoPath;
-        _loaded = true;
       });
     }
     final feeVal = await db.businessDao.getSetting('card_fee_percentage');
@@ -189,7 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                             border: Border.all(color: AppColors.primary, width: 2),
                             image: _logoBase64 != null
@@ -264,7 +262,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         type: TextInputType.number),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _currency,
+                      initialValue: _currency,
                       decoration: const InputDecoration(
                         labelText: 'Moneda',
                         prefixIcon: Icon(Icons.attach_money_rounded),
@@ -318,6 +316,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
     
+                // Hardware
+                _SectionCard(
+                  title: 'Hardware y Dispositivos',
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.print_rounded, color: AppColors.primary),
+                      title: const Text('Configuración de Impresora'),
+                      subtitle: const Text('Conectar billetera térmica Bluetooth'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () => context.push('/settings/printer'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
                 // Preferences
                 _SectionCard(
                   title: 'Preferencias y Seguridad',
@@ -326,7 +340,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: const Text('Modo Oscuro'),
                       subtitle: const Text('Interfaz oscura'),
                       value: isDark,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (v) =>
                           ref.read(themeModeProvider.notifier).state = v,
                     ),

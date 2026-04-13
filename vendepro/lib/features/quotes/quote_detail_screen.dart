@@ -9,58 +9,146 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../../core/utils/dr_utils.dart';
 
 class QuoteDetailScreen extends ConsumerWidget {
   final String quoteId;
   const QuoteDetailScreen({super.key, required this.quoteId});
 
-  Future<void> _convertToInvoice(BuildContext context, WidgetRef ref, Quote quote) async {
+  Future<void> _showConversionDialog(BuildContext context, WidgetRef ref, Quote quote) async {
+    final ncfAsync = ref.read(ncfSequencesProvider);
+    final ncfList = ncfAsync.value ?? [];
+    
+    String? selectedNcfType;
+    String selectedPaymentMethod = 'cash';
+    
+    final result = await showDialog<Map<String, String?>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Convertir a Factura'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Seleccione los detalles para la facturación fiscal.'),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Tipo de NCF', border: OutlineInputBorder()),
+                hint: const Text('Sin comprobante (Consumo)'),
+                value: selectedNcfType,
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Sin comprobante')),
+                  ...ncfList.map((s) => DropdownMenuItem(
+                    value: s.type, 
+                    child: Text(DRUtils.ncfTypes[s.type] ?? 'Comprobante ${s.type}'),
+                  )),
+                ],
+                onChanged: (v) => setState(() => selectedNcfType = v),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Método de Pago', border: OutlineInputBorder()),
+                value: selectedPaymentMethod,
+                items: const [
+                  DropdownMenuItem(value: 'cash', child: Text('Efectivo')),
+                  DropdownMenuItem(value: 'card', child: Text('Tarjeta')),
+                  DropdownMenuItem(value: 'transfer', child: Text('Transferencia')),
+                  DropdownMenuItem(value: 'credit', child: Text('Crédito')),
+                ],
+                onChanged: (v) => setState(() => selectedPaymentMethod = v!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, {
+                'ncfType': selectedNcfType,
+                'paymentMethod': selectedPaymentMethod,
+              }),
+              child: const Text('Generar Factura'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      await _executeConversion(
+        context, 
+        ref, 
+        quote, 
+        result['ncfType'], 
+        result['paymentMethod']!,
+      );
+    }
+  }
+
+  Future<void> _executeConversion(
+    BuildContext context, 
+    WidgetRef ref, 
+    Quote quote, 
+    String? ncfType, 
+    String paymentMethod
+  ) async {
     final db = ref.read(databaseProvider);
     final bId = ref.read(currentBusinessIdProvider);
     final items = await db.quotesDao.getItems(quote.id);
     
     final invId = const Uuid().v4();
     final today = DateTime.now();
-    final invNum = 'F-${DateFormat('Hm').format(today)}';
+
+    // Generate NCF if selected
+    String? ncf;
+    if (ncfType != null) {
+      ncf = await db.ncfDao.getNextNCF(bId, ncfType);
+    }
+    
+    // Hardcoded simple sequence for invoice number if NCF is not used as primary ID
+    final invNum = ncf ?? 'F-${DateFormat('Hm').format(today)}';
 
     try {
-      // 1. Create Invoice
-      await db.invoicesDao.insertInvoice(InvoicesCompanion(
-        id: drift.Value(invId),
-        invoiceNumber: drift.Value(invNum),
-        customerId: drift.Value(quote.customerId),
-        customerName: drift.Value(quote.customerName),
-        subtotal: drift.Value(quote.subtotal),
-        taxAmount: drift.Value(quote.taxAmount),
-        total: drift.Value(quote.total),
-        status: const drift.Value('issued'),
-        paymentMethod: const drift.Value('cash'),
-        businessId: drift.Value(bId),
-        createdAt: drift.Value(today),
-      ));
-
-      // 2. Create Items & Update Stock
-      for (final item in items) {
-        await db.invoicesDao.insertItem(InvoiceItemsCompanion(
-          id: drift.Value(const Uuid().v4()),
-          invoiceId: drift.Value(invId),
-          productId: drift.Value(item.productId),
-          productName: drift.Value(item.productName),
-          unitPrice: drift.Value(item.unitPrice),
-          quantity: drift.Value(item.quantity),
-          taxAmount: drift.Value(item.taxAmount),
-          subtotal: drift.Value(item.subtotal),
+      await db.transaction(() async {
+        // 1. Create Invoice
+        await db.invoicesDao.insertInvoice(InvoicesCompanion(
+          id: drift.Value(invId),
+          invoiceNumber: drift.Value(invNum),
+          customerId: drift.Value(quote.customerId),
+          customerName: drift.Value(quote.customerName),
+          subtotal: drift.Value(quote.subtotal),
+          taxAmount: drift.Value(quote.taxAmount),
+          total: drift.Value(quote.total),
+          status: drift.Value(paymentMethod == 'credit' ? 'issued' : 'paid'),
+          paymentMethod: drift.Value(paymentMethod),
+          ncf: drift.Value(ncf),
+          ncfType: drift.Value(ncfType),
+          businessId: drift.Value(bId),
+          createdAt: drift.Value(today),
         ));
 
-        // Update Stock
-        final p = await db.productsDao.getById(item.productId);
-        if (p != null) {
-          await db.productsDao.updateStock(p.id, p.stock - item.quantity);
-        }
-      }
+        // 2. Create Items & Update Stock
+        for (final item in items) {
+          await db.invoicesDao.insertItem(InvoiceItemsCompanion(
+            id: drift.Value(const Uuid().v4()),
+            invoiceId: drift.Value(invId),
+            productId: drift.Value(item.productId),
+            productName: drift.Value(item.productName),
+            unitPrice: drift.Value(item.unitPrice),
+            quantity: drift.Value(item.quantity),
+            taxAmount: drift.Value(item.taxAmount),
+            subtotal: drift.Value(item.subtotal),
+          ));
 
-      // 3. Mark Quote as Converted
-      await db.quotesDao.updateStatus(quote.id, 'converted');
+          // Update Stock
+          final p = await db.productsDao.getById(item.productId);
+          if (p != null) {
+            await db.productsDao.updateStock(p.id, p.stock - item.quantity);
+          }
+        }
+
+        // 3. Mark Quote as Converted
+        await db.quotesDao.updateStatus(quote.id, 'converted');
+      });
 
       if (context.mounted) {
         context.push('/invoices/$invId');
@@ -133,7 +221,7 @@ class QuoteDetailScreen extends ConsumerWidget {
                     child: GradientButton(
                       label: 'Convertir en Factura',
                       icon: Icons.receipt_long_rounded,
-                      onTap: () => _convertToInvoice(context, ref, quote),
+                      onTap: () => _showConversionDialog(context, ref, quote),
                     ),
                   ),
               ],
@@ -164,7 +252,7 @@ class _StatusChip extends StatelessWidget {
     Color color = status == 'pending' ? Colors.orange : Colors.green;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: color)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: color)),
       child: Text(status.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }

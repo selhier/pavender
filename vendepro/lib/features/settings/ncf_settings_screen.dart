@@ -1,5 +1,6 @@
 // lib/features/settings/ncf_settings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:drift/drift.dart' as drift;
@@ -47,7 +48,7 @@ class NcfSettingsScreen extends ConsumerWidget {
                 itemBuilder: (_, i) => _NcfSequenceCard(
                   sequence: sequences[i],
                   onDelete: () => _delete(context, db, sequences[i].id),
-                ),
+                ).animate(delay: (i * 60).ms).fadeIn().slideY(begin: 0.1),
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -211,7 +212,7 @@ class _AddNcfFormState extends ConsumerState<_AddNcfForm> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
-            value: _type,
+            initialValue: _type,
             decoration: const InputDecoration(labelText: 'Tipo de Comprobante'),
             items: DRUtils.ncfTypes.entries
                 .map(

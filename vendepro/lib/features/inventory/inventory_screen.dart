@@ -8,6 +8,11 @@ import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../../core/database/app_database.dart';
+import 'package:uuid/uuid.dart';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
+import 'package:csv/csv.dart';
+import 'package:share_plus/share_plus.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -42,6 +47,35 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario'),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (value) {
+              if (value == 'import') _importCSV();
+              if (value == 'export') _exportCSV();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'import',
+                child: ListTile(
+                  leading: Icon(Icons.upload_file_rounded),
+                  title: Text('Importar CSV'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.download_rounded),
+                  title: Text('Exportar CSV'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+            ],
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
@@ -175,6 +209,84 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       ),
     );
   }
+
+  Future<void> _importCSV() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+      final fileData = result.files.first.bytes;
+      if (fileData == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al leer archivo.')));
+        return;
+      }
+      
+      final csvString = utf8.decode(fileData);
+      List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
+      if (rows.isEmpty || rows.length == 1) return; 
+
+      final db = ref.read(databaseProvider);
+      final bId = ref.read(currentBusinessIdProvider);
+      
+      int imported = 0;
+      for (var i = 1; i < rows.length; i++) {
+        final row = rows[i];
+        if (row.isEmpty || row[0].toString().trim().isEmpty) continue;
+        
+        final name = row[0].toString();
+        final sku = row.length > 1 ? row[1].toString() : '';
+        final price = row.length > 2 ? double.tryParse(row[2].toString()) ?? 0.0 : 0.0;
+        final cost = row.length > 3 ? double.tryParse(row[3].toString()) ?? 0.0 : 0.0;
+        final stock = row.length > 4 ? int.tryParse(row[4].toString()) ?? 0 : 0;
+        
+        final uuid = const Uuid().v4();
+        await db.productsDao.upsert(ProductsCompanion(
+          id: drift.Value(uuid),
+          name: drift.Value(name),
+          sku: drift.Value(sku.isEmpty ? null : sku),
+          price: drift.Value(price),
+          cost: drift.Value(cost),
+          stock: drift.Value(stock),
+          businessId: drift.Value(bId),
+          isActive: const drift.Value(true),
+        ));
+        imported++;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$imported productos importados', style: const TextStyle(color: Colors.white)), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportCSV() async {
+    final db = ref.read(databaseProvider);
+    final bId = ref.read(currentBusinessIdProvider);
+    final products = await db.productsDao.watchAll(bId).first;
+    
+    List<List<dynamic>> rows = [
+      ["Nombre", "SKU", "Precio", "Costo", "Stock"]
+    ];
+    
+    for(var p in products) {
+      rows.add([p.name, p.sku ?? '', p.price, p.cost, p.stock]);
+    }
+    
+    String csv = const ListToCsvConverter().convert(rows);
+    await Share.share(csv, subject: 'Inventario.csv');
+  }
 }
 
 class _ProductCard extends StatelessWidget {
@@ -232,8 +344,8 @@ class _ProductCard extends StatelessWidget {
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: isLowStock
-                                ? AppColors.warning.withOpacity(0.15)
-                                : AppColors.success.withOpacity(0.15),
+                                ? AppColors.warning.withValues(alpha: 0.15)
+                                : AppColors.success.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
