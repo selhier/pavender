@@ -44,7 +44,7 @@ class VendePro extends ConsumerWidget {
     
     final isDark = ref.watch(themeModeProvider);
     return MaterialApp.router(
-      title: 'Tickit',
+      title: 'VendePro',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

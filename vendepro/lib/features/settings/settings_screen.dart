@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -317,20 +318,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 16),
     
                 // Hardware
-                _SectionCard(
-                  title: 'Hardware y Dispositivos',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.print_rounded, color: AppColors.primary),
-                      title: const Text('Configuración de Impresora'),
-                      subtitle: const Text('Conectar billetera térmica Bluetooth'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      contentPadding: EdgeInsets.zero,
-                      onTap: () => context.push('/settings/printer'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                if (!kIsWeb) ...[
+                  _SectionCard(
+                    title: 'Hardware y Dispositivos',
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.print_rounded, color: AppColors.primary),
+                        title: const Text('Configuración de Impresora'),
+                        subtitle: const Text('Conectar billetera térmica Bluetooth'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        contentPadding: EdgeInsets.zero,
+                        onTap: () => context.push('/settings/printer'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 
                 // Preferences
                 _SectionCard(

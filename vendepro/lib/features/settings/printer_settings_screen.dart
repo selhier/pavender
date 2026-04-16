@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import '../../core/theme/app_theme.dart';
@@ -97,63 +98,97 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       appBar: AppBar(
         title: const Text('Impresora Tickets'),
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: _connected ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
-            child: Row(
-              children: [
-                Icon(_connected ? Icons.print_rounded : Icons.print_disabled_rounded, 
-                  color: _connected ? AppColors.success : AppColors.error, size: 32),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Estado: ${_connected ? "Conectada" : "Desconectada"}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      if (_targetMac.isNotEmpty) Text('MAC: $_targetMac', style: const TextStyle(fontSize: 12)),
-                    ],
-                  ),
+      body: kIsWeb 
+        ? _buildWebMessage()
+        : Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                color: _connected ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    Icon(_connected ? Icons.print_rounded : Icons.print_disabled_rounded, 
+                      color: _connected ? AppColors.success : AppColors.error, size: 32),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Estado: ${_connected ? "Conectada" : "Desconectada"}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          if (_targetMac.isNotEmpty) Text('MAC: $_targetMac', style: const TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    if (_connected)
+                      TextButton(
+                        onPressed: _disconnect,
+                        child: const Text('Desconectar', style: TextStyle(color: AppColors.error)),
+                      ),
+                  ],
                 ),
-                if (_connected)
-                  TextButton(
-                    onPressed: _disconnect,
-                    child: const Text('Desconectar', style: TextStyle(color: AppColors.error)),
-                  ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: FilledButton.icon(
+                  onPressed: _isScanning ? null : _scanDevices,
+                  icon: _isScanning ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.bluetooth_searching_rounded),
+                  label: const Text('Buscar Dispositivos Vinculados'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _devices.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final device = _devices[index];
+                    return ListTile(
+                      leading: const Icon(Icons.bluetooth_rounded),
+                      title: Text(device.name),
+                      subtitle: Text(device.macAdress),
+                      trailing: _targetMac == device.macAdress && _connected
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.success)
+                          : TextButton(
+                              onPressed: () => _connect(device.macAdress),
+                              child: const Text('Conectar'),
+                            ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FilledButton.icon(
-              onPressed: _isScanning ? null : _scanDevices,
-              icon: _isScanning ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.bluetooth_searching_rounded),
-              label: const Text('Buscar Dispositivos Vinculados'),
-              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+    );
+  }
+
+  Widget _buildWebMessage() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 80, color: Colors.grey),
+            const SizedBox(height: 24),
+            const Text(
+              'Hardware Bluetooth no disponible en Web',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: _devices.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final device = _devices[index];
-                return ListTile(
-                  leading: const Icon(Icons.bluetooth_rounded),
-                  title: Text(device.name),
-                  subtitle: Text(device.macAdress),
-                  trailing: _targetMac == device.macAdress && _connected
-                      ? const Icon(Icons.check_circle_rounded, color: AppColors.success)
-                      : TextButton(
-                          onPressed: () => _connect(device.macAdress),
-                          child: const Text('Conectar'),
-                        ),
-                );
-              },
+            const SizedBox(height: 16),
+            const Text(
+              'La impresión directa por Bluetooth está reservada para nuestras aplicaciones nativas de Android e iOS.\n\nEn la versión Web, puedes imprimir usando el diálogo del sistema del navegador seleccionando tu impresora térmica instalada.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
             ),
-          ),
-        ],
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Regresar'),
+            ),
+          ],
+        ),
       ),
     );
   }

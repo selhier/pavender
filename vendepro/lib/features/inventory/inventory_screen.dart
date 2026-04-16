@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:share_plus/share_plus.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -51,7 +52,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) {
-              if (value == 'import') _importCSV();
+              if (value == 'import') _importInventory();
               if (value == 'export') _exportCSV();
             },
             itemBuilder: (context) => [
@@ -59,7 +60,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 value: 'import',
                 child: ListTile(
                   leading: Icon(Icons.upload_file_rounded),
-                  title: Text('Importar CSV'),
+                  title: Text('Importar Inventario (Excel/CSV)'),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
@@ -210,24 +211,44 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     );
   }
 
-  Future<void> _importCSV() async {
+  Future<void> _importInventory() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv'],
+        allowedExtensions: ['csv', 'xlsx', 'xls'],
         withData: true,
       );
 
       if (result == null || result.files.isEmpty) return;
-      final fileData = result.files.first.bytes;
+      final file = result.files.first;
+      final fileData = file.bytes;
       if (fileData == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al leer archivo.')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error al leer archivo.')),
+          );
+        }
         return;
       }
       
-      final csvString = utf8.decode(fileData);
-      List<List<dynamic>> rows = const CsvToListConverter().convert(csvString);
-      if (rows.isEmpty || rows.length == 1) return; 
+      List<List<dynamic>> rows = [];
+
+      if (file.extension == 'csv') {
+        final csvString = utf8.decode(fileData);
+        rows = const CsvToListConverter().convert(csvString);
+      } else if (file.extension == 'xlsx' || file.extension == 'xls') {
+        final excel = Excel.decodeBytes(fileData);
+        for (var table in excel.tables.keys) {
+          final sheet = excel.tables[table];
+          if (sheet == null) continue;
+          for (var row in sheet.rows) {
+            rows.add(row.map((cell) => cell?.value).toList());
+          }
+          break; // Only import the first sheet
+        }
+      }
+
+      if (rows.isEmpty || rows.length <= 1) return; 
 
       final db = ref.read(databaseProvider);
       final bId = ref.read(currentBusinessIdProvider);
@@ -235,10 +256,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       int imported = 0;
       for (var i = 1; i < rows.length; i++) {
         final row = rows[i];
-        if (row.isEmpty || row[0].toString().trim().isEmpty) continue;
+        if (row.isEmpty || row[0] == null || row[0].toString().trim().isEmpty) {
+          continue;
+        }
         
         final name = row[0].toString();
-        final sku = row.length > 1 ? row[1].toString() : '';
+        final sku = row.length > 1 ? row[1]?.toString() ?? '' : '';
         final price = row.length > 2 ? double.tryParse(row[2].toString()) ?? 0.0 : 0.0;
         final cost = row.length > 3 ? double.tryParse(row[3].toString()) ?? 0.0 : 0.0;
         final stock = row.length > 4 ? int.tryParse(row[4].toString()) ?? 0 : 0;
@@ -259,13 +282,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$imported productos importados', style: const TextStyle(color: Colors.white)), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text('$imported productos importados', 
+              style: const TextStyle(color: Colors.white)), 
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e', 
+              style: const TextStyle(color: Colors.white)), 
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
