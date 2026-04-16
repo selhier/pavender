@@ -530,7 +530,7 @@ class _InvoiceTile extends StatelessWidget {
       child: Card(
         margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
           leading: Container(
             width: 44,
             height: 44,
@@ -550,14 +550,16 @@ class _InvoiceTile extends StatelessWidget {
             style: const TextStyle(color: Colors.grey, fontSize: 13),
           ),
           trailing: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 '\$${invoice.total.toStringAsFixed(2)}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 15),
+                    fontWeight: FontWeight.w700, fontSize: 13),
               ),
+              const SizedBox(height: 2),
               StatusBadge(status: invoice.status),
             ],
           ),

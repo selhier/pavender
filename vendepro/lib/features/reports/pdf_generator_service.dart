@@ -297,7 +297,7 @@ class PDFGeneratorService {
       final fontBold = await PdfGoogleFonts.nunitoBold();
       final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold));
       
-      final format = PdfPageFormat.roll80.copyWith(
+      final format = PdfPageFormat(80 * PdfPageFormat.mm, 500 * PdfPageFormat.mm).copyWith(
         marginTop: 5 * PdfPageFormat.mm,
         marginBottom: 10 * PdfPageFormat.mm,
         marginLeft: 5 * PdfPageFormat.mm,

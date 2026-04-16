@@ -7,6 +7,8 @@ import '../../core/widgets/shared_widgets.dart';
 import 'pdf_generator_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'dart:typed_data';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -69,18 +71,59 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     
     final invoices = await db.invoicesDao.getByDateRange(bId, startDate, today);
     
-    String csv = "RNCCedula,TipoIdentificacion,NumeroComprobanteFiscal,NCFModificado,TipoIngreso,FechaComprobante,FechaPago,MontoFacturado,ITBISFacturado,ITBISRetenido,MontoPropinaLegal,MontoEfectivo\n";
+    final excel = Excel.createExcel();
+    final sheet = excel['Sheet1'];
+    
+    // Headers
+    sheet.appendRow([
+      TextCellValue("RNCCedula"),
+      TextCellValue("TipoIdentificacion"),
+      TextCellValue("NumeroComprobanteFiscal"),
+      TextCellValue("NCFModificado"),
+      TextCellValue("TipoIngreso"),
+      TextCellValue("FechaComprobante"),
+      TextCellValue("FechaPago"),
+      TextCellValue("MontoFacturado"),
+      TextCellValue("ITBISFacturado"),
+      TextCellValue("ITBISRetenido"),
+      TextCellValue("MontoPropinaLegal"),
+      TextCellValue("MontoEfectivo"),
+    ]);
     
     for (var inv in invoices) {
       final rnc = inv.customerTaxId ?? "000000000";
-      final tipo = rnc.length == 9 ? "1" : "2"; // 1=RNC, 2=Cedula
+      final tipo = rnc.length == 9 ? "1" : "2";
       final ncf = inv.ncf ?? inv.invoiceNumber;
       final fecha = DateFormat('yyyyMMdd').format(inv.createdAt);
       
-      csv += "$rnc,$tipo,$ncf,,01,$fecha,$fecha,${inv.subtotal.toStringAsFixed(2)},${inv.taxAmount.toStringAsFixed(2)},0.00,0.00,${inv.total.toStringAsFixed(2)}\n";
+      sheet.appendRow([
+        TextCellValue(rnc),
+        TextCellValue(tipo),
+        TextCellValue(ncf ?? ""),
+        TextCellValue(""),
+        TextCellValue("01"),
+        TextCellValue(fecha),
+        TextCellValue(fecha),
+        DoubleCellValue(inv.subtotal),
+        DoubleCellValue(inv.taxAmount),
+        DoubleCellValue(0.0),
+        DoubleCellValue(0.0),
+        DoubleCellValue(inv.total),
+      ]);
     }
     
-    await Share.share(csv, subject: 'Reporte 607 - ${DateFormat('MMMM yyyy').format(today)}');
+    final bytes = excel.save();
+    if (bytes != null) {
+      final fileName = '607_${DateFormat('yyyyMM').format(today)}.xlsx';
+      await Share.shareXFiles(
+        [XFile.fromData(
+          Uint8List.fromList(bytes),
+          name: fileName,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )],
+        subject: 'Reporte 607 - ${DateFormat('MMMM yyyy').format(today)}',
+      );
+    }
   }
 
   void _export606() async {
@@ -92,14 +135,54 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     
     final expenses = await db.expensesDao.getByDateRange(bId, startDate, today);
     
-    String csv = "RNCCedula,TipoIdentificacion,TipoBienesServicios,NumeroComprobanteFiscal,NCFModificado,FechaComprobante,FechaPago,MontoFacturado,ITBISFacturado,ITBISRetenido,ITBISProporcionalidad\n";
+    final excel = Excel.createExcel();
+    final sheet = excel['Sheet1'];
+    
+    // Headers
+    sheet.appendRow([
+      TextCellValue("RNCCedula"),
+      TextCellValue("TipoIdentificacion"),
+      TextCellValue("TipoBienesServicios"),
+      TextCellValue("NumeroComprobanteFiscal"),
+      TextCellValue("NCFModificado"),
+      TextCellValue("FechaComprobante"),
+      TextCellValue("FechaPago"),
+      TextCellValue("MontoFacturado"),
+      TextCellValue("ITBISFacturado"),
+      TextCellValue("ITBISRetenido"),
+      TextCellValue("ITBISProporcionalidad"),
+    ]);
     
     for (var exp in expenses) {
-      final rnc = "000000000"; // Generic as we don't store provider RNC yet
-      csv += "$rnc,1,01,B0100000000,,${DateFormat('yyyyMMdd').format(exp.date)},${DateFormat('yyyyMMdd').format(exp.date)},${exp.amount.toStringAsFixed(2)},0.00,0.00,0.00\n";
+      final rnc = "000000000";
+      final fecha = DateFormat('yyyyMMdd').format(exp.date);
+      sheet.appendRow([
+        TextCellValue(rnc),
+        TextCellValue("1"),
+        TextCellValue("01"),
+        TextCellValue("B0100000000"),
+        TextCellValue(""),
+        TextCellValue(fecha),
+        TextCellValue(fecha),
+        DoubleCellValue(exp.amount),
+        DoubleCellValue(0.0),
+        DoubleCellValue(0.0),
+        DoubleCellValue(0.0),
+      ]);
     }
     
-    await Share.share(csv, subject: 'Reporte 606 - ${DateFormat('MMMM yyyy').format(today)}');
+    final bytes = excel.save();
+    if (bytes != null) {
+      final fileName = '606_${DateFormat('yyyyMM').format(today)}.xlsx';
+      await Share.shareXFiles(
+        [XFile.fromData(
+          Uint8List.fromList(bytes),
+          name: fileName,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )],
+        subject: 'Reporte 606 - ${DateFormat('MMMM yyyy').format(today)}',
+      );
+    }
   }
 
   @override
@@ -130,6 +213,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
                     DropdownButtonFormField<String>(
+                      key: const ValueKey('period_dropdown'),
                       initialValue: _period,
                       decoration: const InputDecoration(labelText: 'Período'),
                       items: ['Hoy', 'Esta Semana', 'Este Mes']
@@ -157,7 +241,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _export607,
                       icon: const Icon(Icons.file_download_rounded),
-                      label: const Text('Exportar 607'),
+                      label: const Text('Reporte 607 (Excel)'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -169,7 +253,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _export606,
                       icon: const Icon(Icons.file_upload_rounded),
-                      label: const Text('Exportar 606'),
+                      label: const Text('Reporte 606 (Excel)'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -181,7 +265,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 12),
                 child: Text(
-                  'Los archivos CSV se generan con el formato requerido por la DGII.',
+                  'Los archivos Excel se generan con el formato de columnas requerido por la DGII.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
