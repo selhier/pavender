@@ -1,7 +1,8 @@
 // lib/core/providers/auth_provider.dart
+import 'dart:convert';
+import 'package:drift/drift.dart' as drift;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
 import 'providers.dart';
 
@@ -18,7 +19,14 @@ final authStateProvider = StreamProvider<User?>((ref) {
 // Provides the currently active branch ID (tenant ID)
 final activeBranchIdProvider = StateProvider<String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return prefs.getString('active_branch_id') ?? 'default_business';
+  final stored = prefs.getString('active_branch_id');
+  final fbUser = FirebaseAuth.instance.currentUser;
+  
+  // If stored is default_business but we have a firebase user, use their UID
+  if (fbUser != null && (stored == null || stored == 'default_business')) {
+    return fbUser.uid;
+  }
+  return stored ?? 'default_business';
 });
 
 // Unified Auth State for Routing/Logic
@@ -58,11 +66,13 @@ final authInitProvider = FutureProvider<void>((ref) async {
       // Ensure a Firebase session for Firestore access
       final auth = ref.read(firebaseAuthProvider);
       if (auth.currentUser == null) {
-        await auth.signInAnonymously();
+        try {
+          await auth.signInAnonymously();
+        } catch (_) {}
       }
       
-      // Pull latest data for this branch
-      await ref.read(syncServiceProvider).pullFromCloud();
+      // Sync pending changes and pull latest data with conflict resolution
+      await ref.read(syncServiceProvider).syncPendingChanges();
     }
   }
 });
@@ -72,14 +82,93 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
   AuthController(this._auth) : super(const AsyncData(null));
 
+  Future<void> _ensureBusinessSetup(String uid, AppDatabase db, WidgetRef ref) async {
+    // 1. Ensure business record exists
+    final existing = await db.businessDao.getBusiness(uid);
+    if (existing == null) {
+      await db.into(db.businesses).insertOnConflictUpdate(BusinessesCompanion(
+        id: drift.Value(uid),
+        name: const drift.Value('Mi Negocio'),
+        currency: const drift.Value('USD'),
+        currencySymbol: const drift.Value('\$'),
+        updatedAt: drift.Value(DateTime.now()),
+      ));
+    }
+
+    // 2. Ensure default categories exist for this business
+    final existingCats = await db.productsDao.getCategories(uid);
+    if (existingCats.isEmpty) {
+      const cats = ['General', 'Bebidas', 'Alimentos', 'Electrónica', 'Ropa'];
+      for (final cat in cats) {
+        final catId = '${uid}_${cat.toLowerCase().replaceAll('é', 'e').replaceAll('ó', 'o')}';
+        await db.into(db.categories).insertOnConflictUpdate(CategoriesCompanion(
+          id: drift.Value(catId),
+          name: drift.Value(cat),
+          businessId: drift.Value(uid),
+          updatedAt: drift.Value(DateTime.now()),
+        ));
+      }
+    }
+
+    // 3. Migrate any offline inventory from 'default_business' if target account has no inventory
+    try {
+      final targetProducts = await db.productsDao.watchAll(uid).first;
+      if (targetProducts.isEmpty) {
+        final defaultProducts = await db.productsDao.watchAll('default_business').first;
+        if (defaultProducts.isNotEmpty) {
+          for (final p in defaultProducts) {
+            await (db.update(db.products)..where((tbl) => tbl.id.equals(p.id))).write(
+              ProductsCompanion(
+                businessId: drift.Value(uid),
+                updatedAt: drift.Value(DateTime.now()),
+              ),
+            );
+            await db.syncDao.enqueue(SyncQueueCompanion.insert(
+              id: 'prod_${p.id}_${DateTime.now().millisecondsSinceEpoch}',
+              entity: 'products',
+              entityId: p.id,
+              operation: 'upsert',
+              data: jsonEncode({
+                'id': p.id,
+                'name': p.name,
+                'description': p.description,
+                'sku': p.sku,
+                'price': p.price,
+                'cost': p.cost,
+                'stock': p.stock,
+                'minStock': p.minStock,
+                'categoryId': p.categoryId,
+                'unit': p.unit,
+                'taxRate': p.taxRate,
+                'brand': p.brand,
+                'subCategory': p.subCategory,
+                'businessId': uid,
+                'isActive': p.isActive,
+                'updatedAt': DateTime.now().toIso8601String(),
+              }),
+            ));
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 4. Trigger two-way sync: upload pending offline changes then pull cloud changes with conflict resolution
+    await ref.read(syncServiceProvider).syncPendingChanges();
+  }
+
   Future<void> signIn(String email, String password, WidgetRef ref) async {
     state = const AsyncLoading();
     try {
       // 1. Try Firebase Auth first
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       
-      // Trigger initial pull
-      await ref.read(syncServiceProvider).pullFromCloud();
+      final uid = _auth.currentUser!.uid;
+      ref.read(activeBranchIdProvider.notifier).state = uid;
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString('active_branch_id', uid);
+
+      final db = ref.read(databaseProvider);
+      await _ensureBusinessSetup(uid, db, ref);
       
       state = const AsyncData(null);
     } catch (e) {
@@ -103,11 +192,12 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         
         // 3. Ensure Firebase session for Firestore permissions
         if (_auth.currentUser == null) {
-          await _auth.signInAnonymously();
+          try {
+            await _auth.signInAnonymously();
+          } catch (_) {}
         }
         
-        // Trigger initial pull for the branch
-        await ref.read(syncServiceProvider).pullFromCloud();
+        await _ensureBusinessSetup(localUser.businessId, db, ref);
         
         state = const AsyncData(null);
       } else {
@@ -118,11 +208,41 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> signUp(String email, String password, WidgetRef ref) async {
     state = const AsyncLoading();
     try {
       await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
+          
+      final uid = _auth.currentUser!.uid;
+      ref.read(activeBranchIdProvider.notifier).state = uid;
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString('active_branch_id', uid);
+
+      final db = ref.read(databaseProvider);
+      await _ensureBusinessSetup(uid, db, ref);
+      
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithGoogle(WidgetRef ref) async {
+    state = const AsyncLoading();
+    try {
+      final googleProvider = GoogleAuthProvider();
+      await _auth.signInWithPopup(googleProvider);
+          
+      final uid = _auth.currentUser!.uid;
+      ref.read(activeBranchIdProvider.notifier).state = uid;
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString('active_branch_id', uid);
+
+      final db = ref.read(databaseProvider);
+      await _ensureBusinessSetup(uid, db, ref);
+      
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);

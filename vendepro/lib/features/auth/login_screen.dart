@@ -53,6 +53,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authControllerProvider.notifier).signInWithGoogle(ref);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().split(']').last}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,6 +175,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       label: 'Entrar',
                       isLoading: _isLoading,
                       onTap: _login,
+                    ),
+                    const SizedBox(height: 16),
+                    GoogleAuthButton(
+                      label: 'Continuar con Google',
+                      isLoading: _isLoading,
+                      onTap: _loginWithGoogle,
                     ),
                   ],
                 ),

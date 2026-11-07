@@ -5,16 +5,21 @@ import '../tables/tables.dart';
 
 part 'daos.g.dart';
 
+String _snakeToCamel(String s) {
+  return s.replaceAllMapped(RegExp(r'_([a-z])'), (match) => match.group(1)!.toUpperCase());
+}
+
 Map<String, dynamic> _mapCompanion(UpdateCompanion companion) {
   return companion.toColumns(true).map((key, value) {
+    final camelKey = _snakeToCamel(key);
     if (value is Variable) {
       final val = value.value;
       if (val is DateTime) {
-        return MapEntry(key, val.toIso8601String());
+        return MapEntry(camelKey, val.toIso8601String());
       }
-      return MapEntry(key, val);
+      return MapEntry(camelKey, val);
     }
-    return MapEntry(key, null);
+    return MapEntry(camelKey, null);
   });
 }
 
@@ -40,19 +45,37 @@ class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin 
   Future<Product?> getById(String id) =>
       (select(products)..where((p) => p.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsert(ProductsCompanion product) async {
+  Future<void> upsert(ProductsCompanion product, {bool syncToCloud = true}) async {
     await into(products).insertOnConflictUpdate(product);
-    await db.syncDao.enqueue(SyncQueueCompanion.insert(
-      id: 'prod_${product.id.value}_${DateTime.now().millisecondsSinceEpoch}',
-      entity: 'products',
-      entityId: product.id.value,
-      operation: 'upsert',
-      data: jsonEncode(_mapCompanion(product)),
-    ));
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'prod_${product.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'products',
+        entityId: product.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(product)),
+      ));
+    }
   }
 
   Future<List<Category>> getCategories(String businessId) =>
       (select(categories)..where((c) => c.businessId.equals(businessId))).get();
+
+  Future<Category?> getCategoryById(String id) =>
+      (select(categories)..where((c) => c.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertCategory(CategoriesCompanion category, {bool syncToCloud = true}) async {
+    await into(categories).insertOnConflictUpdate(category);
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'cat_${category.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'categories',
+        entityId: category.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(category)),
+      ));
+    }
+  }
 
   Future<void> updateStock(String productId, int newStock) async {
     await (update(products)..where((p) => p.id.equals(productId)))
@@ -203,15 +226,17 @@ class CustomersDao extends DatabaseAccessor<AppDatabase>
   Future<Customer?> getById(String id) =>
       (select(customers)..where((c) => c.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsert(CustomersCompanion customer) async {
+  Future<void> upsert(CustomersCompanion customer, {bool syncToCloud = true}) async {
     await into(customers).insertOnConflictUpdate(customer);
-    await db.syncDao.enqueue(SyncQueueCompanion.insert(
-      id: 'cust_${customer.id.value}_${DateTime.now().millisecondsSinceEpoch}',
-      entity: 'customers',
-      entityId: customer.id.value,
-      operation: 'upsert',
-      data: jsonEncode(_mapCompanion(customer)),
-    ));
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'cust_${customer.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'customers',
+        entityId: customer.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(customer)),
+      ));
+    }
   }
 
   Future<List<Customer>> search(String businessId, String query) =>
@@ -228,6 +253,18 @@ class SyncDao extends DatabaseAccessor<AppDatabase> with _$SyncDaoMixin {
 
   Future<List<SyncQueueData>> getPending() =>
       (select(syncQueue)..where((s) => s.processed.equals(false))).get();
+
+  Stream<int> watchPendingCount() =>
+      (select(syncQueue)..where((s) => s.processed.equals(false)))
+          .watch()
+          .map((list) => list.length);
+
+  Future<Set<String>> getPendingEntityIds(String entity) async {
+    final rows = await (select(syncQueue)
+          ..where((s) => s.entity.equals(entity) & s.processed.equals(false)))
+        .get();
+    return rows.map((r) => r.entityId).toSet();
+  }
 
   Future<void> enqueue(SyncQueueCompanion entry) =>
       into(syncQueue).insert(entry);
@@ -253,15 +290,17 @@ class BusinessDao extends DatabaseAccessor<AppDatabase> with _$BusinessDaoMixin 
   Future<List<BusinessesData>> getAllBranches() =>
       select(businesses).get();
 
-  Future<void> upsert(BusinessesCompanion business) async {
+  Future<void> upsert(BusinessesCompanion business, {bool syncToCloud = true}) async {
     await into(businesses).insertOnConflictUpdate(business);
-    await db.syncDao.enqueue(SyncQueueCompanion.insert(
-      id: 'biz_${business.id.value}_${DateTime.now().millisecondsSinceEpoch}',
-      entity: 'businesses',
-      entityId: business.id.value,
-      operation: 'upsert',
-      data: jsonEncode(_mapCompanion(business)),
-    ));
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'biz_${business.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'businesses',
+        entityId: business.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(business)),
+      ));
+    }
   }
 
   Future<String?> getSetting(String key) async {
@@ -293,6 +332,9 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase> with _$ExpensesDaoMixin 
           ..orderBy([(e) => OrderingTerm(expression: e.date, mode: OrderingMode.asc)]))
         .get();
   }
+
+  Future<Expense?> getById(String id) =>
+      (select(expenses)..where((e) => e.id.equals(id))).getSingleOrNull();
 
   Future<void> upsert(ExpensesCompanion expense) async {
     await into(expenses).insertOnConflictUpdate(expense);
@@ -341,15 +383,20 @@ class NcfDao extends DatabaseAccessor<AppDatabase> with _$NcfDaoMixin {
   Stream<List<NcfSequence>> watchAll(String businessId) =>
       (select(ncfSequences)..where((s) => s.businessId.equals(businessId))).watch();
 
-  Future<void> upsert(NcfSequencesCompanion sequence) async {
+  Future<NcfSequence?> getById(String id) =>
+      (select(ncfSequences)..where((s) => s.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsert(NcfSequencesCompanion sequence, {bool syncToCloud = true}) async {
     await into(ncfSequences).insertOnConflictUpdate(sequence);
-    await db.syncDao.enqueue(SyncQueueCompanion.insert(
-      id: 'ncf_${sequence.id.value}_${DateTime.now().millisecondsSinceEpoch}',
-      entity: 'ncf_sequences',
-      entityId: sequence.id.value,
-      operation: 'upsert',
-      data: jsonEncode(_mapCompanion(sequence)),
-    ));
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'ncf_${sequence.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'ncf_sequences',
+        entityId: sequence.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(sequence)),
+      ));
+    }
   }
 
   Future<void> deleteSequence(String id) =>
@@ -466,15 +513,17 @@ class SuppliersDao extends DatabaseAccessor<AppDatabase> with _$SuppliersDaoMixi
             ..orderBy([(s) => OrderingTerm.asc(s.name)]))
           .watch();
 
-  Future<void> upsert(SuppliersCompanion supplier) async {
+  Future<void> upsert(SuppliersCompanion supplier, {bool syncToCloud = true}) async {
     await into(suppliers).insertOnConflictUpdate(supplier);
-    await db.syncDao.enqueue(SyncQueueCompanion.insert(
-      id: 'sup_${supplier.id.value}_${DateTime.now().millisecondsSinceEpoch}',
-      entity: 'suppliers',
-      entityId: supplier.id.value,
-      operation: 'upsert',
-      data: jsonEncode(_mapCompanion(supplier)),
-    ));
+    if (syncToCloud) {
+      await db.syncDao.enqueue(SyncQueueCompanion.insert(
+        id: 'sup_${supplier.id.value}_${DateTime.now().millisecondsSinceEpoch}',
+        entity: 'suppliers',
+        entityId: supplier.id.value,
+        operation: 'upsert',
+        data: jsonEncode(_mapCompanion(supplier)),
+      ));
+    }
   }
 
   Future<Supplier?> getById(String id) =>
@@ -509,6 +558,9 @@ class AuthDao extends DatabaseAccessor<AppDatabase> with _$AuthDaoMixin {
 @DriftAccessor(tables: [CashSessions])
 class CashSessionsDao extends DatabaseAccessor<AppDatabase> with _$CashSessionsDaoMixin {
   CashSessionsDao(super.db);
+
+  Future<CashSession?> getById(String id) =>
+      (select(cashSessions)..where((s) => s.id.equals(id))).getSingleOrNull();
 
   Future<CashSession?> getActiveSession(String businessId, String cashierId) =>
       (select(cashSessions)
@@ -558,6 +610,9 @@ class PurchaseOrdersDao extends DatabaseAccessor<AppDatabase> with _$PurchaseOrd
             ..where((o) => o.businessId.equals(businessId))
             ..orderBy([(o) => OrderingTerm.desc(o.createdAt)]))
           .watch();
+
+  Future<PurchaseOrder?> getById(String id) =>
+      (select(purchaseOrders)..where((o) => o.id.equals(id))).getSingleOrNull();
 
   Future<List<PurchaseOrderItem>> getItems(String orderId) =>
       (select(purchaseOrderItems)..where((i) => i.orderId.equals(orderId))).get();

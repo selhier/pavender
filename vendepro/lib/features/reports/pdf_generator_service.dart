@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
@@ -111,6 +112,13 @@ class PDFGeneratorService {
     final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold));
     final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
 
+    pw.MemoryImage? logoImage;
+    if (business?.logoPath != null && business!.logoPath!.isNotEmpty) {
+      try {
+        logoImage = pw.MemoryImage(base64Decode(business.logoPath!));
+      } catch (_) {}
+    }
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -126,6 +134,12 @@ class PDFGeneratorService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
+                      if (logoImage != null)
+                        pw.Container(
+                          height: 50,
+                          margin: const pw.EdgeInsets.only(bottom: 8),
+                          child: pw.Image(logoImage),
+                        ),
                       pw.Text(business?.name ?? 'Mi Negocio',
                           style: pw.TextStyle(
                               fontSize: 22, fontWeight: pw.FontWeight.bold)),
@@ -304,6 +318,13 @@ class PDFGeneratorService {
         marginRight: 5 * PdfPageFormat.mm,
       );
 
+      pw.MemoryImage? logoImage;
+      if (business?.logoPath != null && business!.logoPath!.isNotEmpty) {
+        try {
+          logoImage = pw.MemoryImage(base64Decode(business.logoPath!));
+        } catch (_) {}
+      }
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: format,
@@ -312,6 +333,12 @@ class PDFGeneratorService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
+                  if (logoImage != null)
+                    pw.Container(
+                      height: 40,
+                      margin: const pw.EdgeInsets.only(bottom: 5),
+                      child: pw.Image(logoImage),
+                    ),
                   pw.Text(business?.name.toUpperCase() ?? 'VENDEPRO',
                       style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center),
                   if (business?.address != null)

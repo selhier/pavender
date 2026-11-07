@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +111,14 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(invoicePayments);
             await m.createTable(purchaseOrders);
             await m.createTable(purchaseOrderItems);
+          }
+          if (from < 9) {
+            // Add updatedAt for offline-cloud conflict comparison
+            await m.addColumn(categories, categories.updatedAt);
+            await m.addColumn(quotes, quotes.updatedAt);
+            await m.addColumn(suppliers, suppliers.updatedAt);
+            await m.addColumn(cashSessions, cashSessions.updatedAt);
+            await m.addColumn(purchaseOrders, purchaseOrders.updatedAt);
           }
         },
       );

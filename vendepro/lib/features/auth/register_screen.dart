@@ -49,8 +49,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
     
     try {
-      await ref.read(authControllerProvider.notifier).signUp(email, password);
+      await ref.read(authControllerProvider.notifier).signUp(email, password, ref);
       // Let the router handle the redirection once auth state changes
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().split(']').last}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _registerWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(authControllerProvider.notifier).signInWithGoogle(ref);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,6 +176,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     gradient: AppColors.gradientAccent,
                     isLoading: _isLoading,
                     onTap: _register,
+                  ),
+                  const SizedBox(height: 16),
+                  GoogleAuthButton(
+                    label: 'Registrarse con Google',
+                    isLoading: _isLoading,
+                    onTap: _registerWithGoogle,
                   ),
                 ],
               ),

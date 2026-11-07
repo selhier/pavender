@@ -28,6 +28,7 @@ class Categories extends Table {
   TextColumn get color => text().withDefault(const Constant('#6C63FF'))();
   TextColumn get businessId => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -155,6 +156,7 @@ class Quotes extends Table {
   TextColumn get businessId => text()();
   DateTimeColumn get expiresAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -184,6 +186,7 @@ class Suppliers extends Table {
   TextColumn get address => text().nullable()();
   TextColumn get businessId => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -264,6 +267,7 @@ class CashSessions extends Table {
   
   // open, closed
   TextColumn get status => text().withDefault(const Constant('open'))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -294,6 +298,7 @@ class PurchaseOrders extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get expectedDate => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
